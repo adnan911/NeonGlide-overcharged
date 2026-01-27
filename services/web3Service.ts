@@ -1,13 +1,28 @@
 
-import { ethers } from 'https://esm.sh/ethers@6.13.1';
+import { ethers } from 'ethers';
+
+import { CoinbaseWalletSDK } from '@coinbase/wallet-sdk';
 
 const BASE_MAINNET_CHAIN_ID = '0x2105'; // 8453
 const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // Replace with deployed address after hardhat run
+
+const APP_NAME = 'Neon Glide Onchain';
+const APP_LOGO_URL = 'https://avatars.githubusercontent.com/u/108554348?v=4';
+const BASE_RPC_URL = 'https://mainnet.base.org';
+
+const sdk = new CoinbaseWalletSDK({
+  appName: APP_NAME,
+  appLogoUrl: APP_LOGO_URL
+});
+
+// Provide standard RPC URL
+const coinbaseProvider = sdk.makeWeb3Provider();
 
 const NEON_GLIDE_ABI = [
   "function recordScore(uint256 _score) public",
   "function syncCores(uint256 _amount) public",
   "function getPlayerData(address _player) public view returns (uint256 highScore, uint256 totalCores)",
+  "function mint() public returns (uint256)",
   "event ScoreRecorded(address indexed player, uint256 score, uint256 timestamp)"
 ];
 
@@ -17,46 +32,37 @@ class Web3Service {
   private address: string | null = null;
 
   async connect() {
-    if (typeof (window as any).ethereum !== 'undefined') {
-      try {
-        this.provider = new ethers.BrowserProvider((window as any).ethereum);
-        
-        // Ensure we are on Base Mainnet
-        const network = await this.provider.getNetwork();
-        if (network.chainId !== 8453n) {
-          try {
-            await (window as any).ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BASE_MAINNET_CHAIN_ID }],
-            });
-          } catch (switchError: any) {
-            // This error code indicates the chain has not been added to MetaMask/Coinbase Wallet
-            if (switchError.code === 4902) {
-              await (window as any).ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [{
-                  chainId: BASE_MAINNET_CHAIN_ID,
-                  chainName: 'Base Mainnet',
-                  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-                  rpcUrls: ['https://mainnet.base.org'],
-                  blockExplorerUrls: ['https://basescan.org'],
-                }],
-              });
-            }
-          }
-        }
+    try {
+      // Prioritize Coinbase Wallet
+      const ethereum = coinbaseProvider as any;
 
-        const accounts = await this.provider.send("eth_requestAccounts", []);
-        this.signer = await this.provider.getSigner();
-        this.address = accounts[0];
-        console.log("Connected to Base:", this.address);
-        return this.address;
-      } catch (error) {
-        console.error("Connection failed:", error);
-        return null;
+      this.provider = new ethers.BrowserProvider(ethereum);
+
+      const accounts = await this.provider.send("eth_requestAccounts", []);
+      this.signer = await this.provider.getSigner();
+      this.address = accounts[0];
+
+      console.log("Connected to Base via Coinbase Wallet:", this.address);
+      return this.address;
+    } catch (error) {
+      console.error("Coinbase Wallet connection failed, falling back to window.ethereum:", error);
+
+      // Fallback
+      if (typeof (window as any).ethereum !== 'undefined') {
+        try {
+          this.provider = new ethers.BrowserProvider((window as any).ethereum);
+          // ... (keep existing Base network switch logic if needed, but Coinbase SDK handles it usually)
+          const accounts = await this.provider.send("eth_requestAccounts", []);
+          this.signer = await this.provider.getSigner();
+          this.address = accounts[0];
+          return this.address;
+        } catch (err) {
+          console.error("Fallback connection failed", err);
+          return null;
+        }
       }
+      return null;
     }
-    return null;
   }
 
   async autoConnect() {
@@ -102,6 +108,34 @@ class Web3Service {
     } catch (error) {
       console.error("Onchain Core Error:", error);
       return false;
+    }
+  }
+
+  async mint() {
+    if (!this.signer || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return null;
+    try {
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
+      const tx = await contract.mint();
+      await tx.wait();
+      return true;
+    } catch (error) {
+      console.error("Minting Error:", error);
+      return false;
+    }
+  }
+
+  async getPlayerData() {
+    if (!this.signer || !this.address || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return null;
+    try {
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
+      const data = await contract.getPlayerData(this.address);
+      return {
+        highScore: Number(data.highScore),
+        totalCores: Number(data.totalCores)
+      };
+    } catch (error) {
+      console.error("Fetch Data Error:", error);
+      return null;
     }
   }
 }

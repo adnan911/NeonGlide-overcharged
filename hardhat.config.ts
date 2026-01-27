@@ -1,6 +1,9 @@
 
 import { HardhatUserConfig } from 'hardhat/config';
 import '@nomicfoundation/hardhat-toolbox';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 // Note: In a real environment, you would use process.env.WALLET_KEY
 // For this app, we assume the environment is pre-configured.

@@ -3,17 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Play, Info, Volume2, VolumeX, Trophy, Zap, ShoppingBag, X, Check, Lock, Sparkles, ShieldCheck, Loader2, Cpu, Wallet } from 'lucide-react';
 import { GameSettings, HighScore, PlayerSkin } from '../types';
 import { SKINS, COLORS } from '../constants';
-import { GoogleGenAI } from "@google/genai";
 import { web3Service } from '../services/web3Service';
 import nftPreview from '../Public/neon_glide_nft.png';
-
-const NFT_PROMPTS = [
-  "A vertical 3D trading card floating in a dark digital void. Made of polished black obsidian with glowing cyan circuit lines. Centered energy cube pulses with electricity. Top: 'NEON GLIDE' embossed in glowing white chrome. Bottom: holographic 'GAMEPASS' tag in electric purple. Ray-traced reflections, high contrast, cinematic lighting.",
-  "A high-fidelity 3D NFT card of translucent frosted glass. Inside, neon pink and cyan lightning arcs. Top: 'NEON GLIDE' in bold 3D futuristic typography. Bottom: metallic gold plate with 'GAMEPASS' engraved in blue laser light. Soft bokeh digital city background, hyper-realistic textures.",
-  "An electrifying 3D vertical card exploding with energy. Blue crystal shards fly outward. Background: dark storm with purple lightning. Center: 'NEON GLIDE' in glitch-style neon font. 'GAMEPASS' on a glowing digital ribbon wrapped at the base. High contrast, vivid neon colors.",
-  "Heavy industrial 3D card designed like futuristic combat armor. Brushed titanium plates with glowing cyan vents. Center: rotating plasma core. Top: 'NEON GLIDE' in stenciled glowing orange font. Bottom: digital screen displaying 'GAMEPASS' in scrolling matrix-green text. Cinematic perspective, metallic textures.",
-  "A holographic 3D card made of iridescent crystal. Light refracts in neon rainbows. Top: 'NEON GLIDE' in sleek minimalist silver font. Bottom: 'GAMEPASS' in bold glowing cyan sans-serif. Volumetric god-rays, high-energy vibe, elegant 3D composition."
-];
 
 const NFTCard3D: React.FC<{ imageUrl?: string; videoUrl?: string }> = ({ imageUrl, videoUrl }) => {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -144,43 +135,33 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
     setMintStatus("Connecting to Plasma Grid...");
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const randomPrompt = NFT_PROMPTS[Math.floor(Math.random() * NFT_PROMPTS.length)];
+      setMintStatus("Connecting to Grid...");
 
-      setMintStatus("Synthesizing Energy Pass...");
+      // Attempt on-chain minting
+      const txSuccess = await web3Service.mint();
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [{ text: randomPrompt }],
-        },
-        config: {
-          imageConfig: {
-            aspectRatio: "9:16"
-          }
-        },
-      });
-
-      let imageUrl = "";
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData) {
-            imageUrl = `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
-            break;
-          }
-        }
-      }
-
-      if (imageUrl) {
-        onUpdateSettings({
-          ...settings,
-          hasGamePass: true,
-          nftImage: imageUrl
-        });
-        setMintStatus("");
+      if (txSuccess === true) {
+        setMintStatus("Transaction Confirmed. Verifying...");
+        // Wait a bit for effect
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else if (txSuccess === null) {
+        // Contract not deployed/configured -> Fallback to simulation for demo/dev
+        console.log("Contract not configured, falling back to local simulation.");
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setMintStatus("Synthesizing Energy Pass (Dev Mode)...");
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } else {
-        throw new Error("Grid synthesis failed to return image data.");
+        // Explicit failure
+        throw new Error("Minting transaction failed or was rejected.");
       }
+
+      // Use static preview as the "minted" image
+      onUpdateSettings({
+        ...settings,
+        hasGamePass: true,
+        nftImage: nftPreview
+      });
+      setMintStatus("");
     } catch (error: any) {
       console.error("Minting failed:", error);
       setMintError(error.message || "Grid connection failed. Please try again.");
@@ -300,7 +281,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
                 <ShieldCheck className="text-cyan-400" size={32} />
               </div>
               <h2 className="text-3xl font-black font-orbitron italic text-white tracking-tighter uppercase">Grid Pass</h2>
-              <p className="text-slate-400 text-xs leading-relaxed">Synthesize an optional 3D Game Pass to showcase your presence on the grid. This is a unique aesthetic asset powered by Gemini AI.</p>
+              <p className="text-slate-400 text-xs leading-relaxed">Synthesize an optional 3D Game Pass to showcase your presence on the grid. This is a unique aesthetic asset.</p>
             </div>
 
             <div className="aspect-[9/16] rounded-[2.5rem] bg-slate-800/20 flex items-center justify-center relative overflow-hidden">
