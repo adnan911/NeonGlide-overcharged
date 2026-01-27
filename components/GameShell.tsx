@@ -1,10 +1,11 @@
-
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import nftPreview from '../Public/neon_glide_nft.png';
 import Landing from './Landing';
 import GameCanvas from './GameCanvas';
 import { GameState, GameSettings, HighScore, ActivePowerUp, PowerUpType } from '../types';
 import { getSettings, saveSettings, getHighScores, saveHighScore } from '../services/persistence';
-import { Pause, RotateCcw, Home, SkipForward, Zap, Trophy, CloudLightning, Loader2, Shield, Magnet, Timer } from 'lucide-react';
+import { Pause, RotateCcw, Home, SkipForward, Zap, Trophy, CloudLightning, Loader2, Shield, Magnet, Timer, Download } from 'lucide-react';
 import { SKINS, COLORS, PHYSICS } from '../constants';
 import { web3Service } from '../services/web3Service';
 
@@ -25,16 +26,16 @@ const PowerUpHUD: React.FC<{ activePowerUps: ActivePowerUp[] }> = ({ activePower
         const config = getPowerUpConfig(pu.type);
         const remaining = Math.max(0, pu.endTime - Date.now());
         const progress = (remaining / PHYSICS.POWER_UP_DURATION) * 100;
-        
+
         return (
           <div key={`${pu.type}-${idx}`} className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${config.bg} ${config.border} backdrop-blur-xl animate-in slide-in-from-right-4 duration-300`}>
             <div className={`${config.color}`}>{config.icon}</div>
             <div className="flex flex-col gap-1 w-24">
               <span className={`text-[9px] font-black uppercase tracking-widest ${config.color}`}>{config.label}</span>
               <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full ${config.color.replace('text', 'bg')} transition-all duration-100 ease-linear`} 
-                  style={{ width: `${progress}%` }} 
+                <div
+                  className={`h-full ${config.color.replace('text', 'bg')} transition-all duration-100 ease-linear`}
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
@@ -54,6 +55,49 @@ const GameShell: React.FC = () => {
   const [activePowerUps, setActivePowerUps] = useState<ActivePowerUp[]>([]);
   const [isOnchainSyncing, setIsOnchainSyncing] = useState(false);
   const [onchainStatus, setOnchainStatus] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadCard = async () => {
+    if (!cardRef.current) return;
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#020617',
+        scale: 2, // High res for the fixed size
+        width: 450,
+        height: 800,
+        windowWidth: 450,
+        windowHeight: 800,
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.querySelector('[data-card-ref="true"]') as HTMLElement;
+          if (el) {
+            // Force Image Dimensions & Styling
+            el.style.width = '450px';
+            el.style.height = '800px';
+            el.style.maxWidth = 'none';
+            el.style.maxHeight = 'none';
+            el.style.margin = '0';
+            el.style.padding = '40px';
+            el.style.justifyContent = 'center';
+
+            // Custom Look for the Card Image
+            el.style.borderRadius = '0'; // Full image fill
+            el.style.border = '4px solid #06b6d4'; // Cyan border
+            el.style.background = '#020617'; // Ensure dark bg fills 450x800
+            el.style.boxSizing = 'border-box'; // Ensure padding/border is included in width
+            el.style.boxShadow = 'inset 0 0 30px rgba(6, 182, 212, 0.4)'; // Inset neon glow
+          }
+        },
+        logging: false,
+        useCORS: true
+      });
+      const link = document.createElement('a');
+      link.download = `neon-glide-access-card-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error("Failed to generate card image", err);
+    }
+  };
 
   const startGame = (newSettings: GameSettings) => {
     setSettings(newSettings);
@@ -69,14 +113,14 @@ const GameShell: React.FC = () => {
     setCurrentScore(finalScore);
     setCurrentRunCores(finalCores);
     saveHighScore(finalScore);
-    
+
     const updatedSettings = {
       ...settings,
       totalCores: settings.totalCores + finalCores
     };
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
-    
+
     setHighScores(getHighScores());
     setGameState(GameState.GAME_OVER);
 
@@ -148,8 +192,8 @@ const GameShell: React.FC = () => {
     <div className="relative w-full h-screen overflow-hidden bg-slate-950 select-none font-inter">
       {gameState !== GameState.LANDING && (
         <>
-          <GameCanvas 
-            gameState={gameState} 
+          <GameCanvas
+            gameState={gameState}
             settings={settings}
             onGameOver={handleGameOver}
             onScoreUpdate={setCurrentScore}
@@ -161,9 +205,9 @@ const GameShell: React.FC = () => {
       )}
 
       {gameState === GameState.LANDING && (
-        <Landing 
-          onStart={startGame} 
-          highScores={highScores} 
+        <Landing
+          onStart={startGame}
+          highScores={highScores}
           settings={settings}
           onUpdateSettings={handleUpdateSettings}
         />
@@ -176,7 +220,7 @@ const GameShell: React.FC = () => {
               <div className="w-3 h-3 rounded-full bg-cyan-400 animate-ping" />
               <span className="text-slate-500 text-[10px] font-black tracking-[0.4em] uppercase">Energy Output</span>
             </div>
-            <span 
+            <span
               className="text-6xl font-black font-orbitron text-white italic"
               style={{ filter: `drop-shadow(0 0 20px ${selectedSkin.glowColor})` }}
             >
@@ -193,8 +237,8 @@ const GameShell: React.FC = () => {
               </div>
             </div>
           </div>
-          <button 
-            onClick={togglePause} 
+          <button
+            onClick={togglePause}
             className="pointer-events-auto w-16 h-16 bg-slate-900/40 backdrop-blur-2xl rounded-3xl hover:bg-slate-800 transition-all border border-white/5 active:scale-90 flex items-center justify-center shadow-2xl"
           >
             <Pause className="text-white fill-current" size={32} />
@@ -210,13 +254,13 @@ const GameShell: React.FC = () => {
               <h2 className="text-8xl font-black text-white italic font-orbitron tracking-tighter drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">GRID LOCK</h2>
             </div>
             <div className="flex space-x-8">
-              <button 
+              <button
                 onClick={() => setGameState(GameState.PLAYING)}
                 className="w-24 h-24 flex items-center justify-center bg-cyan-500 rounded-[2.5rem] hover:scale-110 transition-all shadow-[0_0_50px_rgba(0,242,255,0.5)] active:scale-95"
               >
                 <SkipForward size={44} className="text-slate-950 fill-current ml-1" />
               </button>
-              <button 
+              <button
                 onClick={() => setGameState(GameState.LANDING)}
                 className="w-24 h-24 flex items-center justify-center bg-slate-800/80 rounded-[2.5rem] hover:scale-110 transition-all border border-white/10 active:scale-95 backdrop-blur-xl"
               >
@@ -228,19 +272,35 @@ const GameShell: React.FC = () => {
       )}
 
       {gameState === GameState.GAME_OVER && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-3xl p-4 overflow-y-auto">
-          <div className="flex flex-col items-center p-8 bg-slate-900/30 rounded-[4rem] border border-white/5 shadow-3xl space-y-8 max-w-sm w-full my-auto animate-in zoom-in-95 duration-500">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/95 backdrop-blur-3xl p-4 overflow-y-auto perspective-[1000px]">
+          <div
+            ref={cardRef}
+            data-card-ref="true"
+            className="flex flex-col items-center p-6 sm:p-8 bg-slate-900/90 rounded-[2.5rem] sm:rounded-[4rem] border border-white/10 shadow-[0_0_50px_rgba(6,182,212,0.15)] space-y-4 sm:space-y-8 max-w-xs sm:max-w-sm w-full my-auto animate-in zoom-in-95 duration-500 relative overflow-hidden transform-style-3d hover:rotate-x-2 hover:rotate-y-2 transition-transform duration-300"
+            style={{
+              animation: 'float 6s ease-in-out infinite',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(6, 182, 212, 0.1) inset'
+            }}
+          >
+            <style>{`
+              @keyframes float {
+                0%, 100% { transform: translateY(0) rotateX(0); }
+                50% { transform: translateY(-20px) rotateX(2deg); }
+              }
+            `}</style>
+            {/* Download Watermark (Visible only on download potentially, but fine here) */}
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50" />
             <div className="text-center w-full space-y-6">
               <div className="space-y-2">
                 <div className="text-rose-500 text-xs font-black tracking-[0.6em] uppercase animate-pulse">Critical Arc Failure</div>
-                <h2 className="text-rose-500 font-black text-6xl font-orbitron tracking-tighter italic drop-shadow-[0_0_20px_rgba(244,63,94,0.4)]">SHORTED</h2>
+                <h2 className="text-rose-500 font-black text-4xl sm:text-6xl font-orbitron tracking-tighter italic drop-shadow-[0_0_20px_rgba(244,63,94,0.4)]">SHORTED</h2>
               </div>
-              
+
               <div className="flex flex-col gap-3">
-                <div className={`flex flex-col items-center p-6 rounded-[2.5rem] border ${theme.border} ${theme.bg} ${theme.shadow} space-y-4 backdrop-blur-2xl`}>
+                <div className={`flex flex-col items-center p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border ${theme.border} ${theme.bg} ${theme.shadow} space-y-3 sm:space-y-4 backdrop-blur-2xl`}>
                   <div className="flex flex-col items-center gap-1">
                     <div className={`text-[10px] font-black uppercase tracking-[0.4em] ${theme.color} opacity-70`}>Energy State: {theme.label}</div>
-                    <div className="text-4xl font-black text-white font-orbitron">TIER {speedTier}</div>
+                    <div className="text-3xl sm:text-4xl font-black text-white font-orbitron">TIER {speedTier}</div>
                   </div>
                   <div className="w-full space-y-2">
                     <div className="relative w-full h-3 bg-black/60 rounded-full overflow-hidden border border-white/5 p-0.5">
@@ -250,14 +310,21 @@ const GameShell: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-800/50 p-6 rounded-[2.5rem] border border-white/5 flex flex-col items-center">
+                  <div className="bg-slate-800/50 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/5 flex flex-col items-center">
                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Score</span>
-                    <span className="text-3xl font-black text-white font-orbitron tabular-nums">{currentScore.toFixed(0)}<span className="text-sm ml-1 text-slate-500 italic">M</span></span>
+                    <span className="text-2xl sm:text-3xl font-black text-white font-orbitron tabular-nums">{currentScore.toFixed(0)}<span className="text-sm ml-1 text-slate-500 italic">M</span></span>
                   </div>
-                  <div className="bg-cyan-500/10 p-6 rounded-[2.5rem] border border-cyan-500/20 flex flex-col items-center">
+                  <div className="bg-cyan-500/10 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] border border-cyan-500/20 flex flex-col items-center">
                     <span className="text-[10px] font-black text-cyan-500/60 uppercase tracking-widest mb-1">Cores</span>
-                    <span className="text-3xl font-black text-cyan-400 font-orbitron tabular-nums">+{currentRunCores}</span>
+                    <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-orbitron tabular-nums">+{currentRunCores}</span>
                   </div>
+                </div>
+
+                <div className="col-span-2 bg-slate-900/50 p-4 rounded-[1.5rem] border border-white/5 flex flex-col items-center relative overflow-hidden group">
+                  <div className="w-full h-24 sm:h-32 z-10 flex items-center justify-center">
+                    <img src={nftPreview} alt="Grid Pass" className="h-full object-contain" />
+                  </div>
+                  <div className="absolute bottom-2 right-3 text-[8px] font-mono text-white/20">NFT-721</div>
                 </div>
               </div>
             </div>
@@ -275,22 +342,33 @@ const GameShell: React.FC = () => {
                 Peak Voltage Record!
               </div>
             )}
-            
-            <div className="w-full space-y-4">
-              <button 
+
+
+            <div className="w-full space-y-4" data-html2canvas-ignore="true">
+              <button
                 onClick={handleRetry}
-                className="w-full py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-2xl rounded-3xl transition-all shadow-2xl shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-4 group"
+                className="w-full py-3 sm:py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xl sm:text-2xl rounded-3xl transition-all shadow-2xl shadow-cyan-500/20 active:scale-95 flex items-center justify-center gap-4 group"
               >
                 <RotateCcw size={24} className="group-hover:rotate-[-90deg] transition-transform duration-500" />
                 RE-ENERGIZE
               </button>
-              <button 
-                onClick={() => setGameState(GameState.LANDING)}
-                className="w-full py-4 bg-slate-800/40 hover:bg-slate-800 text-slate-400 font-black text-lg rounded-3xl transition-all active:scale-95 flex items-center justify-center gap-3 border border-white/5"
-              >
-                <Home size={20} />
-                TERMINATE
-              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setGameState(GameState.LANDING)}
+                  className="w-full py-3 sm:py-4 bg-slate-800/40 hover:bg-slate-800 text-slate-400 font-black text-xs sm:text-sm rounded-3xl transition-all active:scale-95 flex items-center justify-center gap-2 sm:gap-3 border border-white/5 hover:text-white"
+                >
+                  <Home size={18} />
+                  TERMINATE
+                </button>
+                <button
+                  onClick={handleDownloadCard}
+                  className="w-full py-3 sm:py-4 bg-slate-800/40 hover:bg-slate-800 text-cyan-400 font-black text-xs sm:text-sm rounded-3xl transition-all active:scale-95 flex items-center justify-center gap-2 sm:gap-3 border border-white/5 hover:border-cyan-500/30 group"
+                >
+                  <Download size={18} className="group-hover:scale-110 transition-transform" />
+                  DOWNLOAD
+                </button>
+              </div>
             </div>
           </div>
         </div>

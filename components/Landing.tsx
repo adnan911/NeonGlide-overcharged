@@ -5,6 +5,7 @@ import { GameSettings, HighScore, PlayerSkin } from '../types';
 import { SKINS, COLORS } from '../constants';
 import { GoogleGenAI } from "@google/genai";
 import { web3Service } from '../services/web3Service';
+import nftPreview from '../Public/neon_glide_nft.png';
 
 const NFT_PROMPTS = [
   "A vertical 3D trading card floating in a dark digital void. Made of polished black obsidian with glowing cyan circuit lines. Centered energy cube pulses with electricity. Top: 'NEON GLIDE' embossed in glowing white chrome. Bottom: holographic 'GAMEPASS' tag in electric purple. Ray-traced reflections, high contrast, cinematic lighting.",
@@ -40,7 +41,7 @@ const NFTCard3D: React.FC<{ imageUrl?: string; videoUrl?: string }> = ({ imageUr
 
   return (
     <div className="perspective-container w-full h-full flex items-center justify-center p-4">
-      <div 
+      <div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -48,7 +49,7 @@ const NFTCard3D: React.FC<{ imageUrl?: string; videoUrl?: string }> = ({ imageUr
         style={{ transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg)` }}
       >
         <div className="holo-shine" />
-        
+
         {videoUrl ? (
           <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
         ) : imageUrl ? (
@@ -145,9 +146,9 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const randomPrompt = NFT_PROMPTS[Math.floor(Math.random() * NFT_PROMPTS.length)];
-      
+
       setMintStatus("Synthesizing Energy Pass...");
-      
+
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
@@ -198,7 +199,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4 sm:p-6 relative overflow-hidden">
       {/* Wallet Indicator */}
       <div className="absolute top-6 right-6 z-20">
-        <button 
+        <button
           onClick={handleConnectWallet}
           className={`flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 backdrop-blur-xl transition-all duration-300 ${walletAddress ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-slate-900/60 hover:bg-slate-800 text-slate-400'}`}
         >
@@ -223,29 +224,29 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-cyan-400/60">Plasma Grid v2.5</span>
               <Zap className="text-cyan-400 fill-cyan-400 animate-pulse" size={14} />
             </div>
-            
+
             <div className="flex flex-col items-center select-none w-full">
-               <span className="text-5xl sm:text-7xl font-black font-orbitron italic tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] animate-flicker uppercase">NEON</span>
-               <div className="relative h-24 sm:h-40 w-full mt-[-30px] sm:mt-[-45px]">
-                 <svg className="w-full h-full overflow-visible animate-glide-sparkle" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                      <filter id="electricGlow"><feGaussianBlur stdDeviation="3.5" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
-                      <clipPath id="textPath"><text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px]">GLIDE</text></clipPath>
-                      <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#00f2ff" />
-                        <stop offset="50%" stopColor="#ffffff" />
-                        <stop offset="100%" stopColor="#7c3aed" />
-                      </linearGradient>
-                    </defs>
-                    <text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px] fill-transparent stroke-cyan-400 stroke-[4px] opacity-20" style={{ filter: 'url(#electricGlow)' }}>GLIDE</text>
-                    <g clipPath="url(#textPath)">
-                      <path d="M-100,50 Q50,0 200,50 T500,50" fill="none" stroke="url(#neonGradient)" strokeWidth="12" className="animate-flow-1 opacity-60" style={{ filter: 'blur(5px)' }} />
-                      <path d="M-100,70 Q50,120 200,70 T500,70" fill="none" stroke="#ff0055" strokeWidth="8" className="animate-flow-2 opacity-50" style={{ filter: 'blur(3px)' }} />
-                      <path d="M-100,60 C50,10 150,110 500,60" fill="none" stroke="white" strokeWidth="3" className="animate-flow-1 opacity-70" />
-                    </g>
-                    <text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px] fill-white/10 stroke-white/40 stroke-[1px]">GLIDE</text>
-                 </svg>
-               </div>
+              <span className="text-5xl sm:text-7xl font-black font-orbitron italic tracking-tighter text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] animate-flicker uppercase">NEON</span>
+              <div className="relative h-24 sm:h-40 w-full mt-[-30px] sm:mt-[-45px]">
+                <svg className="w-full h-full overflow-visible animate-glide-sparkle" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid meet">
+                  <defs>
+                    <filter id="electricGlow"><feGaussianBlur stdDeviation="3.5" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter>
+                    <clipPath id="textPath"><text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px]">GLIDE</text></clipPath>
+                    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#00f2ff" />
+                      <stop offset="50%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="#7c3aed" />
+                    </linearGradient>
+                  </defs>
+                  <text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px] fill-transparent stroke-cyan-400 stroke-[4px] opacity-20" style={{ filter: 'url(#electricGlow)' }}>GLIDE</text>
+                  <g clipPath="url(#textPath)">
+                    <path d="M-100,50 Q50,0 200,50 T500,50" fill="none" stroke="url(#neonGradient)" strokeWidth="12" className="animate-flow-1 opacity-60" style={{ filter: 'blur(5px)' }} />
+                    <path d="M-100,70 Q50,120 200,70 T500,70" fill="none" stroke="#ff0055" strokeWidth="8" className="animate-flow-2 opacity-50" style={{ filter: 'blur(3px)' }} />
+                    <path d="M-100,60 C50,10 150,110 500,60" fill="none" stroke="white" strokeWidth="3" className="animate-flow-1 opacity-70" />
+                  </g>
+                  <text x="50%" y="85" textAnchor="middle" className="font-orbitron italic font-black text-[100px] sm:text-[120px] fill-white/10 stroke-white/40 stroke-[1px]">GLIDE</text>
+                </svg>
+              </div>
             </div>
           </div>
         </div>
@@ -266,8 +267,8 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
             )}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] z-0" />
             <div className="relative flex h-full w-full items-center justify-center rounded-[1.9rem] bg-slate-950/80 px-8 py-6 text-2xl font-black text-white backdrop-blur-3xl group-hover:bg-slate-900/20 transition-colors">
-               <Play className="mr-3 w-8 h-8 fill-current text-cyan-400" />
-               <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'Initiate Surge'}</span>
+              <Play className="mr-3 w-8 h-8 fill-current text-cyan-400" />
+              <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'Initiate Surge'}</span>
             </div>
           </button>
 
@@ -314,10 +315,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 animate-pulse text-center">{mintStatus}</span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-4 opacity-20">
-                   <Cpu className="w-20 h-20 text-white" />
-                   <span className="text-[10px] font-black uppercase tracking-widest">Awaiting Grid Shard</span>
-                </div>
+                <img src={nftPreview} alt="Grid Pass" className="w-full h-full object-contain" />
               )}
             </div>
 
