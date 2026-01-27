@@ -14,6 +14,11 @@ By the end of this quickstart, you'll be able to:
 * Deploy your smart contracts to Base
 * Connect your frontend to your smart contracts
 
+<Tip>
+  **Why Base?**
+
+  Base is a fast, low-cost, builder-friendly Ethereum L2 built to bring the next billion users onchain. By following this guide, you'll join a vibrant ecosystem of developers, creators, and innovators who are building a global onchain economy.
+</Tip>
 
 ## Set Up Your Development Environment
 
@@ -53,13 +58,25 @@ To deploy your smart contracts to Base, you need two key components:
 
 Let's set up both of these:
 
+### 1. Set up your node connection
+
+1. Create a `.env` file in your project's root directory
+2. Add the Base network RPC URL to your `.env` file
+
+```bash  theme={null}
 BASE_RPC_URL="https://mainnet.base.org"
 BASE_SEPOLIA_RPC_URL="https://sepolia.base.org"
+```
+
+3. Load your environment variables
 
 ```bash  theme={null}
 source .env
 ```
 
+<Tip>
+  Base Sepolia is the test network for Base, which we will use for the rest of this guide. You can obtain free Base Sepolia ETH from one of the [faucets listed here](/base-chain/tools/network-faucets).
+</Tip>
 
 ### 2. Secure your private key
 

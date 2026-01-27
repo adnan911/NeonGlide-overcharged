@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas';
-import nftPreview from '../Public/neon_glide_nft.png';
+import nftPreview from '../Public/neon_glide_nft.webp';
 import Landing from './Landing';
 import GameCanvas from './GameCanvas';
 import { GameState, GameSettings, HighScore, ActivePowerUp, PowerUpType } from '../types';
@@ -322,7 +322,7 @@ const GameShell: React.FC = () => {
 
                 <div className="col-span-2 bg-slate-900/50 p-4 rounded-[1.5rem] border border-white/5 flex flex-col items-center relative overflow-hidden group">
                   <div className="w-full h-24 sm:h-32 z-10 flex items-center justify-center">
-                    <img src={nftPreview} alt="Grid Pass" className="h-full object-contain" />
+                    <img src={nftPreview} alt="Grid Pass" className="h-full object-contain" loading="lazy" />
                   </div>
                   <div className="absolute bottom-2 right-3 text-[8px] font-mono text-white/20">NFT-721</div>
                 </div>

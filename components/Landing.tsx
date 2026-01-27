@@ -4,7 +4,7 @@ import { Play, Info, Volume2, VolumeX, Trophy, Zap, ShoppingBag, X, Check, Lock,
 import { GameSettings, HighScore, PlayerSkin } from '../types';
 import { SKINS, COLORS } from '../constants';
 import { web3Service } from '../services/web3Service';
-import nftPreview from '../Public/neon_glide_nft.png';
+import nftPreview from '../Public/neon_glide_nft.webp';
 
 const NFTCard3D: React.FC<{ imageUrl?: string; videoUrl?: string }> = ({ imageUrl, videoUrl }) => {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,7 @@ const NFTCard3D: React.FC<{ imageUrl?: string; videoUrl?: string }> = ({ imageUr
         {videoUrl ? (
           <video src={videoUrl} autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover" />
         ) : imageUrl ? (
-          <img src={imageUrl} alt="NFT Pass" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={imageUrl} alt="NFT Pass" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
             <Cpu className="text-white/10 w-20 h-20" />
@@ -296,7 +296,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
                   <span className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400 animate-pulse text-center">{mintStatus}</span>
                 </div>
               ) : (
-                <img src={nftPreview} alt="Grid Pass" className="w-full h-full object-contain" />
+                <img src={nftPreview} alt="Grid Pass" className="w-full h-full object-contain" loading="lazy" />
               )}
             </div>
 
