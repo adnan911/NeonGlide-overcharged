@@ -25,16 +25,16 @@ interface Particle {
   radius?: number;
 }
 
-const VIEW_SCALE = 0.65; 
-const PLAYER_LEFT_OFFSET = 80; 
+const VIEW_SCALE = 0.65;
+const PLAYER_LEFT_OFFSET = 80;
 
-const GameCanvas: React.FC<GameCanvasProps> = ({ 
-  gameState, 
-  settings, 
-  onGameOver, 
-  onScoreUpdate, 
+const GameCanvas: React.FC<GameCanvasProps> = ({
+  gameState,
+  settings,
+  onGameOver,
+  onScoreUpdate,
   onCoreCollect,
-  onPowerUpsUpdate 
+  onPowerUpsUpdate
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(null);
@@ -42,19 +42,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const flashOpacityRef = useRef(0);
   const gameStateRef = useRef(gameState);
   const deathTimeRef = useRef<number | null>(null);
-  
+
   const particlesRef = useRef<Particle[]>([]);
   const trailRef = useRef<Point[]>([]);
   const collectedInRunRef = useRef(0);
 
-  const { 
-    playerRef, 
-    reset: resetPlayer, 
-    jump: performJump, 
-    update: updatePhysics, 
-    landOnPlatform, 
-    addPowerUp, 
-    removePowerUp 
+  const {
+    playerRef,
+    reset: resetPlayer,
+    jump: performJump,
+    update: updatePhysics,
+    landOnPlatform,
+    addPowerUp,
+    removePowerUp
   } = usePlayerPhysics();
 
   const selectedSkin = SKINS.find(s => s.id === settings.selectedSkinId) || SKINS[0];
@@ -70,7 +70,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   useEffect(() => {
     if (gameState === GameState.PLAYING) {
-      levelRef.current = generateLevel(500000); 
+      levelRef.current = generateLevel(500000);
       resetPlayer(100, 300);
       scoreRef.current = 0;
       worldXRef.current = 0;
@@ -91,7 +91,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const createParticlesAtPlayer = useCallback((isInitialJump: boolean) => {
     const p = playerRef.current;
     if (isInitialJump) {
-      for(let i=0; i < 8; i++) {
+      for (let i = 0; i < 8; i++) {
         particlesRef.current.push({
           x: p.pos.x + p.width / 2,
           y: p.pos.y + p.height / 2,
@@ -102,7 +102,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         });
       }
     } else {
-      for(let i=0; i < 15; i++) {
+      for (let i = 0; i < 15; i++) {
         particlesRef.current.push({
           x: p.pos.x + p.width / 2,
           y: p.pos.y + p.height / 2,
@@ -128,9 +128,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const createCollectBurst = useCallback((x: number, y: number, color: string) => {
     const tier = lastSpeedTierRef.current;
-    const count = 10 + tier * 5; 
+    const count = 10 + tier * 5;
     const spread = 5 + tier * 2;
-    
+
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = (0.5 + Math.random()) * spread;
@@ -153,7 +153,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.lineWidth = (0.5 + Math.random() * 2) * intensity;
     ctx.globalAlpha = 0.3 + Math.random() * 0.7;
     ctx.moveTo(x1, y1);
-    
+
     const segments = 4;
     for (let i = 1; i <= segments; i++) {
       const tx = x1 + (x2 - x1) * (i / segments);
@@ -177,10 +177,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     const tier = lastSpeedTierRef.current;
-    const intensity = Math.min((tier - 1) / 8, 1.0); 
+    const intensity = Math.min((tier - 1) / 8, 1.0);
     const time = Date.now();
     const pulse = Math.sin(time / 200) * 0.5 + 0.5;
-    const groundY = canvas.height * 0.75; 
+    const groundY = canvas.height * 0.75;
 
     const p = playerRef.current;
     const isSlowMo = p.activePowerUps.some(pu => pu.type === 'SLOW_MO');
@@ -188,7 +188,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const hasMagnet = p.activePowerUps.some(pu => pu.type === 'MAGNET');
 
     ctx.save();
-    
+
     if (deathTimeRef.current) {
       const elapsed = time - deathTimeRef.current;
       const shake = Math.max(0, 25 * (1 - elapsed / 500) * (1 + intensity));
@@ -199,7 +199,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     if (isSlowMo) {
-      const slowGrad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+      const slowGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
       slowGrad.addColorStop(0, 'rgba(124, 58, 237, 0)');
       slowGrad.addColorStop(1, 'rgba(124, 58, 237, 0.25)');
       ctx.fillStyle = slowGrad;
@@ -227,23 +227,71 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.save();
     ctx.translate(-worldXRef.current, 0);
 
+    // Dynamic Trail
+    if (trailRef.current.length > 1) {
+      const trailCount = trailRef.current.length;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Pass 1: Heat Glow (Larger, more transparent)
+      for (let i = 0; i < trailCount - 1; i++) {
+        const pt = trailRef.current[i];
+        const nextPt = trailRef.current[i + 1];
+        const ratio = i / trailCount;
+
+        ctx.beginPath();
+        ctx.strokeStyle = selectedSkin.glowColor;
+        ctx.globalAlpha = (0.15 + intensity * 0.2) * ratio;
+        ctx.lineWidth = (p.width * 0.9 * ratio) + (intensity * 35);
+        ctx.moveTo(pt.x + p.width / 2, pt.y + p.height / 2);
+        ctx.lineTo(nextPt.x + p.width / 2, nextPt.y + p.height / 2);
+        ctx.stroke();
+      }
+
+      // Pass 2: High-Energy Core (Narrower, brighter)
+      for (let i = 0; i < trailCount - 1; i++) {
+        const pt = trailRef.current[i];
+        const nextPt = trailRef.current[i + 1];
+        const ratio = i / trailCount;
+
+        ctx.beginPath();
+        // At high intensity, the core starts to turn white
+        ctx.strokeStyle = (intensity > 0.75 && Math.random() > 0.6) ? '#ffffff' : selectedSkin.glowColor;
+        ctx.globalAlpha = (0.5 + intensity * 0.4) * ratio;
+        ctx.lineWidth = (p.width * 0.6 * ratio) + (intensity * 15);
+
+        if (intensity > 0.5) {
+          ctx.shadowBlur = 8 + intensity * 12;
+          ctx.shadowColor = selectedSkin.glowColor;
+        }
+
+        ctx.moveTo(pt.x + p.width / 2, pt.y + p.height / 2);
+        ctx.lineTo(nextPt.x + p.width / 2, nextPt.y + p.height / 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1.0;
+    }
+
     // Obstacles
     for (const obj of levelRef.current) {
-      const visibleRange = canvas.width / VIEW_SCALE + 600; 
+      const visibleRange = canvas.width / VIEW_SCALE + 600;
       if (obj.pos.x < worldXRef.current - 200 || obj.pos.x > worldXRef.current + visibleRange) continue;
       const objY = groundY - (obj.pos.y + obj.size.height);
-      
+
       ctx.save();
-      
+
       if (obj.type === 'SPIKE') {
         ctx.fillStyle = obj.color;
         ctx.shadowBlur = 10 + (intensity * 20);
         ctx.shadowColor = obj.color;
-        ctx.beginPath(); 
-        ctx.moveTo(obj.pos.x, objY + obj.size.height); 
-        ctx.lineTo(obj.pos.x + obj.size.width / 2, objY); 
-        ctx.lineTo(obj.pos.x + obj.size.width, objY + obj.size.height); 
-        ctx.closePath(); 
+        ctx.beginPath();
+        ctx.moveTo(obj.pos.x, objY + obj.size.height);
+        ctx.lineTo(obj.pos.x + obj.size.width / 2, objY);
+        ctx.lineTo(obj.pos.x + obj.size.width, objY + obj.size.height);
+        ctx.closePath();
         ctx.fill();
         ctx.fillStyle = 'white';
         ctx.globalAlpha = 0.3 + pulse * 0.4;
@@ -251,7 +299,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.arc(obj.pos.x + obj.size.width / 2, objY, 4 + intensity * 6, 0, Math.PI * 2);
         ctx.fill();
         if (Math.random() > 0.95 - (intensity * 0.1)) {
-           drawElectricArc(ctx, obj.pos.x + obj.size.width/2, objY, obj.pos.x + (Math.random() - 0.5) * 40, objY + 30, 'white', 1 + intensity);
+          drawElectricArc(ctx, obj.pos.x + obj.size.width / 2, objY, obj.pos.x + (Math.random() - 0.5) * 40, objY + 30, 'white', 1 + intensity);
         }
       } else if (['BLOCK', 'MOVING_BLOCK', 'DESTRUCTIBLE_BLOCK'].includes(obj.type)) {
         ctx.fillStyle = obj.color;
@@ -272,38 +320,38 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fillRect(obj.pos.x + 10, objY + 10, obj.size.width - 20, obj.size.height - 20);
         }
         if (intensity > 0.6 && Math.random() > 0.98) {
-           drawElectricArc(ctx, obj.pos.x, objY, obj.pos.x + 10, objY + 10, 'white', 1.5);
+          drawElectricArc(ctx, obj.pos.x, objY, obj.pos.x + 10, objY + 10, 'white', 1.5);
         }
       } else if (obj.type === 'COLLECTABLE') {
-        ctx.save(); 
-        ctx.translate(obj.pos.x + obj.size.width/2, objY + obj.size.height/2); 
-        ctx.rotate(time / 600); 
+        ctx.save();
+        ctx.translate(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2);
+        ctx.rotate(time / 600);
         ctx.shadowBlur = 10 + pulse * 10;
         ctx.shadowColor = COLORS.core;
         ctx.fillStyle = COLORS.core;
-        ctx.fillRect(-obj.size.width/2, -obj.size.height/2, obj.size.width, obj.size.height); 
+        ctx.fillRect(-obj.size.width / 2, -obj.size.height / 2, obj.size.width, obj.size.height);
         ctx.restore();
       } else if (['MAGNET', 'SHIELD', 'SLOW_MO'].includes(obj.type)) {
-        ctx.save(); 
-        ctx.translate(obj.pos.x + obj.size.width/2, objY + obj.size.height/2); 
+        ctx.save();
+        ctx.translate(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2);
         ctx.shadowBlur = 20;
         ctx.shadowColor = obj.color;
         ctx.fillStyle = obj.color;
-        ctx.beginPath(); ctx.arc(0, 0, obj.size.width/2, 0, Math.PI*2); ctx.fill(); 
+        ctx.beginPath(); ctx.arc(0, 0, obj.size.width / 2, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
       }
       ctx.restore();
     }
 
     // Particles
-    particlesRef.current.forEach(p => { 
-      ctx.globalAlpha = p.life; 
-      ctx.fillStyle = p.color; 
+    particlesRef.current.forEach(p => {
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
       if (p.type === 'electric') {
         const jitter = (Math.random() - 0.5) * 4;
         ctx.fillRect(p.x + jitter, p.y + jitter, 2, 2);
       } else {
-        ctx.fillRect(p.x - 2, p.y - 2, 4, 4); 
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
       }
     });
     ctx.globalAlpha = 1.0;
@@ -316,16 +364,16 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       const pScreenY = p.pos.y + p.height / 2;
       ctx.translate(pScreenX, pScreenY);
       if (hasShield) {
-        ctx.strokeStyle = COLORS.shield; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.width, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = COLORS.shield; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.width, 0, Math.PI * 2); ctx.stroke();
       }
       if (hasMagnet) {
-        ctx.strokeStyle = COLORS.magnet; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(0, 0, PHYSICS.MAGNET_RADIUS * pulse, 0, Math.PI*2); ctx.stroke();
+        ctx.strokeStyle = COLORS.magnet; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(0, 0, PHYSICS.MAGNET_RADIUS * pulse, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.rotate(p.rotation);
       ctx.shadowBlur = 20 + pulse * 15 + intensity * 20;
       ctx.shadowColor = selectedSkin.glowColor;
       ctx.fillStyle = selectedSkin.primaryColor;
-      ctx.fillRect(-p.width/2, -p.height/2, p.width, p.height);
+      ctx.fillRect(-p.width / 2, -p.height / 2, p.width, p.height);
       ctx.restore();
     }
     ctx.restore();
@@ -350,50 +398,52 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     const p = playerRef.current;
     const targetSpeed = Math.min(PHYSICS.BASE_SPEED + (scoreRef.current * PHYSICS.SPEED_INCREMENT), PHYSICS.MAX_SPEED);
-    const groundY = (canvasRef.current?.height || 600) * 0.75; 
+    const groundY = (canvasRef.current?.height || 600) * 0.75;
 
-    // DELEGATE: Physics logic moved to standalone hook
     updatePhysics(dt, targetSpeed, groundY);
     if (onPowerUpsUpdate) onPowerUpsUpdate([...p.activePowerUps]);
 
+    // Dynamic Trail Limit: More points at higher speeds for a longer trail
+    const tier = lastSpeedTierRef.current;
     trailRef.current.push({ x: p.pos.x, y: p.pos.y });
-    if (trailRef.current.length > 20) trailRef.current.shift();
+    const maxTrailPoints = 15 + tier * 5;
+    if (trailRef.current.length > maxTrailPoints) trailRef.current.shift();
+
     worldXRef.current = p.pos.x - PLAYER_LEFT_OFFSET;
 
-    particlesRef.current.forEach(part => { 
-      part.x += part.vx * dt; 
-      part.y += part.vy * dt; 
-      part.life -= (part.type === 'electric' ? 0.03 : 0.015) * dt; 
+    particlesRef.current.forEach(part => {
+      part.x += part.vx * dt;
+      part.y += part.vy * dt;
+      part.life -= (part.type === 'electric' ? 0.03 : 0.015) * dt;
     });
     particlesRef.current = particlesRef.current.filter(part => part.life > 0);
 
-    // Collision Detection Loop
     for (let i = levelRef.current.length - 1; i >= 0; i--) {
       const obj = levelRef.current[i];
       if (obj.pos.x < worldXRef.current - 500 || obj.pos.x > worldXRef.current + 3000) continue;
 
       const objY = groundY - (obj.pos.y + obj.size.height);
-      const isColliding = 
+      const isColliding =
         p.pos.x < obj.pos.x + obj.size.width && p.pos.x + p.width > obj.pos.x &&
         p.pos.y < objY + obj.size.height && p.pos.y + p.height > objY;
 
       if (isColliding) {
         if (obj.type === 'COLLECTABLE') {
           collectedInRunRef.current += 1; onCoreCollect(collectedInRunRef.current);
-          audioService.playScore(); 
-          createCollectBurst(obj.pos.x + obj.size.width/2, objY + obj.size.height/2, obj.color || COLORS.core);
+          audioService.playScore();
+          createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || COLORS.core);
           levelRef.current.splice(i, 1); continue;
         }
 
         if (['MAGNET', 'SHIELD', 'SLOW_MO'].includes(obj.type)) {
           addPowerUp(obj.type as PowerUpType);
-          audioService.playScore(); 
-          createCollectBurst(obj.pos.x + obj.size.width/2, objY + obj.size.height/2, obj.color || '#ffffff');
+          audioService.playScore();
+          createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || '#ffffff');
           levelRef.current.splice(i, 1); continue;
         }
 
         if (['BLOCK', 'MOVING_BLOCK', 'DESTRUCTIBLE_BLOCK'].includes(obj.type) && p.vel.y >= 0 && p.pos.y + p.height < objY + 25) {
-          landOnPlatform(objY); continue; 
+          landOnPlatform(objY); continue;
         }
 
         if (p.activePowerUps.some(pu => pu.type === 'SHIELD')) {
@@ -401,10 +451,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           if (obj.type === 'SPIKE') levelRef.current.splice(i, 1); continue;
         }
 
-        // Fatal collision
         audioService.playDeath(); deathTimeRef.current = time; flashOpacityRef.current = 0.8;
-        for(let k=0; k<30; k++) {
-          particlesRef.current.push({ x: p.pos.x + p.width/2, y: p.pos.y + p.height/2, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life: 1.0, color: selectedSkin.primaryColor });
+        for (let k = 0; k < 30; k++) {
+          particlesRef.current.push({ x: p.pos.x + p.width / 2, y: p.pos.y + p.height / 2, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life: 1.0, color: selectedSkin.primaryColor });
         }
         requestRef.current = requestAnimationFrame(update);
         return;
@@ -412,10 +461,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     const newScore = Math.floor(p.pos.x / 10);
-    if (newScore > scoreRef.current) { 
-        scoreRef.current = newScore; 
-        onScoreUpdate(newScore); 
-        lastSpeedTierRef.current = Math.floor(newScore / 500) + 1;
+    if (newScore > scoreRef.current) {
+      scoreRef.current = newScore;
+      onScoreUpdate(newScore);
+      lastSpeedTierRef.current = Math.floor(newScore / 500) + 1;
     }
 
     render();
