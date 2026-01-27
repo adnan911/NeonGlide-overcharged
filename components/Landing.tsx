@@ -277,11 +277,8 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
             <button onClick={() => setShowMintModal(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
 
             <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-500/10 rounded-[2rem] border border-cyan-500/20 mb-2">
-                <ShieldCheck className="text-cyan-400" size={32} />
-              </div>
               <h2 className="text-3xl font-black font-orbitron italic text-white tracking-tighter uppercase">Grid Pass</h2>
-              <p className="text-slate-400 text-xs leading-relaxed">Synthesize an optional 3D Game Pass to showcase your presence on the grid. This is a unique aesthetic asset.</p>
+              <p className="text-slate-400 text-xs leading-relaxed">Synthesize the Game Pass to showcase your presence on the grid.</p>
             </div>
 
             <div className="aspect-[9/16] rounded-[2.5rem] bg-slate-800/20 flex items-center justify-center relative overflow-hidden">
