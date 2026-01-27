@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { GameState, GameSettings, Entity, Point, PowerUpType, ActivePowerUp } from '../types';
 import { COLORS, PHYSICS, generateLevel, SKINS } from '../constants';
 import { audioService } from '../services/audioService';
@@ -21,8 +21,8 @@ interface Particle {
   vy: number;
   life: number;
   color: string;
-  type?: 'spark' | 'sparkle' | 'shockwave' | 'debris' | 'electric' | 'trail' | 'powerup' | 'magnet-trail';
-  radius?: number;
+  type?: 'spark' | 'sparkle' | 'shockwave' | 'debris' | 'electric' | 'trail' | 'powerup' | 'magnet-trail' | 'streak' | 'trail-flake';
+  width?: number;
 }
 
 const VIEW_SCALE = 0.65;
@@ -46,6 +46,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const particlesRef = useRef<Particle[]>([]);
   const trailRef = useRef<Point[]>([]);
   const collectedInRunRef = useRef(0);
+  const shakeRef = useRef(0);
 
   const {
     playerRef,
@@ -81,6 +82,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       particlesRef.current = [];
       trailRef.current = [];
       collectedInRunRef.current = 0;
+      shakeRef.current = 0;
       onScoreUpdate(0);
       onCoreCollect(0);
       audioService.init();
@@ -88,8 +90,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   }, [gameState, settings.soundEnabled, onScoreUpdate, onCoreCollect, resetPlayer]);
 
+  const addShake = (amount: number) => {
+    shakeRef.current = Math.min(shakeRef.current + amount, 40);
+  };
+
   const createParticlesAtPlayer = useCallback((isInitialJump: boolean) => {
     const p = playerRef.current;
+    addShake(isInitialJump ? 3 : 8);
     if (isInitialJump) {
       for (let i = 0; i < 8; i++) {
         particlesRef.current.push({
@@ -113,16 +120,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           type: 'sparkle'
         });
       }
-      particlesRef.current.push({
-        x: p.pos.x + p.width / 2,
-        y: p.pos.y + p.height / 2,
-        vx: 0,
-        vy: 0,
-        life: 0.5,
-        color: selectedSkin.glowColor,
-        type: 'shockwave',
-        radius: 100
-      });
     }
   }, [selectedSkin, playerRef]);
 
@@ -130,13 +127,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const tier = lastSpeedTierRef.current;
     const count = 10 + tier * 5;
     const spread = 5 + tier * 2;
-
+    addShake(4);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = (0.5 + Math.random()) * spread;
       particlesRef.current.push({
-        x,
-        y,
+        x, y,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
         life: 0.6 + Math.random() * 0.4,
@@ -153,15 +149,41 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.lineWidth = (0.5 + Math.random() * 2) * intensity;
     ctx.globalAlpha = 0.3 + Math.random() * 0.7;
     ctx.moveTo(x1, y1);
-
-    const segments = 4;
+    const segments = Math.max(2, Math.floor(4 * intensity));
     for (let i = 1; i <= segments; i++) {
       const tx = x1 + (x2 - x1) * (i / segments);
       const ty = y1 + (y2 - y1) * (i / segments);
-      const jitter = (Math.random() - 0.5) * 15 * intensity;
+      const jitter = (Math.random() - 0.5) * 20 * intensity;
       ctx.lineTo(tx + jitter, ty + jitter);
     }
     ctx.stroke();
+    ctx.restore();
+  };
+
+  const drawCircuitLines = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, intensity: number) => {
+    ctx.save();
+    ctx.strokeStyle = '#00f2ff';
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.1 + intensity * 0.4;
+
+    // Draw procedural grid-like circuit lines
+    const step = 15;
+    for (let lx = step; lx < w; lx += step) {
+      if (Math.random() > 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(x + lx, y);
+        ctx.lineTo(x + lx, y + h);
+        ctx.stroke();
+      }
+    }
+    for (let ly = step; ly < h; ly += step) {
+      if (Math.random() > 0.5) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + ly);
+        ctx.lineTo(x + w, y + ly);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   };
 
@@ -180,31 +202,40 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const intensity = Math.min((tier - 1) / 8, 1.0);
     const time = Date.now();
     const pulse = Math.sin(time / 200) * 0.5 + 0.5;
+    const energyOscillation = Math.sin(time / 50) * 5; // Fast jitter for electrical effect
     const groundY = canvas.height * 0.75;
 
     const p = playerRef.current;
-    const isSlowMo = p.activePowerUps.some(pu => pu.type === 'SLOW_MO');
     const hasShield = p.activePowerUps.some(pu => pu.type === 'SHIELD');
     const hasMagnet = p.activePowerUps.some(pu => pu.type === 'MAGNET');
 
     ctx.save();
 
-    if (deathTimeRef.current) {
-      const elapsed = time - deathTimeRef.current;
-      const shake = Math.max(0, 25 * (1 - elapsed / 500) * (1 + intensity));
-      ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    // Global Camera Shake
+    const currentShake = deathTimeRef.current ? 25 : shakeRef.current;
+    if (currentShake > 0.1) {
+      ctx.translate((Math.random() - 0.5) * currentShake, (Math.random() - 0.5) * currentShake);
     }
 
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (isSlowMo) {
-      const slowGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 0, canvas.width / 2, canvas.height / 2, canvas.width);
-      slowGrad.addColorStop(0, 'rgba(124, 58, 237, 0)');
-      slowGrad.addColorStop(1, 'rgba(124, 58, 237, 0.25)');
-      ctx.fillStyle = slowGrad;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Kinetic Speed Streaks (Background Pass)
+    ctx.save();
+    ctx.scale(VIEW_SCALE, VIEW_SCALE);
+    const streakCount = Math.floor(intensity * 15);
+    if (streakCount > 0) {
+      ctx.strokeStyle = selectedSkin.glowColor;
+      for (let i = 0; i < streakCount; i++) {
+        const sx = (Math.random() * canvas.width / VIEW_SCALE);
+        const sy = (Math.random() * canvas.height / VIEW_SCALE);
+        const slen = 50 + intensity * 200;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.05 + intensity * 0.1;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + slen, sy); ctx.stroke();
+      }
     }
+    ctx.restore();
 
     ctx.scale(VIEW_SCALE, VIEW_SCALE);
     const verticalOffset = (canvas.height * (1 - VIEW_SCALE)) / 2;
@@ -227,52 +258,81 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     ctx.save();
     ctx.translate(-worldXRef.current, 0);
 
-    // Dynamic Trail
+    // ENHANCED DYNAMIC TRAIL: Multi-Layer Energy Ribbon
     if (trailRef.current.length > 1) {
       const trailCount = trailRef.current.length;
       ctx.save();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-      // Pass 1: Heat Glow (Larger, more transparent)
+      const playerCenterX = p.width / 2;
+      const playerCenterY = p.height / 2;
+
+      // Pass 1: Volumetric Plasma Glow (Wide)
       for (let i = 0; i < trailCount - 1; i++) {
         const pt = trailRef.current[i];
         const nextPt = trailRef.current[i + 1];
         const ratio = i / trailCount;
-
         ctx.beginPath();
         ctx.strokeStyle = selectedSkin.glowColor;
-        ctx.globalAlpha = (0.15 + intensity * 0.2) * ratio;
-        ctx.lineWidth = (p.width * 0.9 * ratio) + (intensity * 35);
-        ctx.moveTo(pt.x + p.width / 2, pt.y + p.height / 2);
-        ctx.lineTo(nextPt.x + p.width / 2, nextPt.y + p.height / 2);
+        ctx.globalAlpha = (0.1 + intensity * 0.15) * ratio;
+        ctx.lineWidth = (p.width * 1.2 * ratio) + (intensity * 45) + energyOscillation;
+        ctx.moveTo(pt.x + playerCenterX, pt.y + playerCenterY);
+        ctx.lineTo(nextPt.x + playerCenterX, nextPt.y + playerCenterY);
         ctx.stroke();
       }
 
-      // Pass 2: High-Energy Core (Narrower, brighter)
+      // Pass 2: High-Frequency Energy Core (Oscillating)
       for (let i = 0; i < trailCount - 1; i++) {
         const pt = trailRef.current[i];
         const nextPt = trailRef.current[i + 1];
         const ratio = i / trailCount;
-
         ctx.beginPath();
-        // At high intensity, the core starts to turn white
-        ctx.strokeStyle = (intensity > 0.75 && Math.random() > 0.6) ? '#ffffff' : selectedSkin.glowColor;
-        ctx.globalAlpha = (0.5 + intensity * 0.4) * ratio;
-        ctx.lineWidth = (p.width * 0.6 * ratio) + (intensity * 15);
+        // At high intensity, the core turns white-hot
+        const coreColor = (intensity > 0.8 && Math.random() > 0.4) ? '#ffffff' : selectedSkin.glowColor;
+        ctx.strokeStyle = coreColor;
+        ctx.globalAlpha = (0.4 + intensity * 0.5) * ratio;
+        ctx.lineWidth = (p.width * 0.5 * ratio) + (intensity * 12) + (Math.random() * 4);
 
-        if (intensity > 0.5) {
-          ctx.shadowBlur = 8 + intensity * 12;
+        if (intensity > 0.4) {
+          ctx.shadowBlur = 10 + intensity * 15;
           ctx.shadowColor = selectedSkin.glowColor;
         }
 
-        ctx.moveTo(pt.x + p.width / 2, pt.y + p.height / 2);
-        ctx.lineTo(nextPt.x + p.width / 2, nextPt.y + p.height / 2);
+        ctx.moveTo(pt.x + playerCenterX, pt.y + playerCenterY);
+        ctx.lineTo(nextPt.x + playerCenterX, nextPt.y + playerCenterY);
         ctx.stroke();
         ctx.shadowBlur = 0;
       }
+
+      // Pass 3: Lightning Arcs (High Tier Only)
+      if (tier >= 4) {
+        for (let i = 0; i < trailCount - 1; i += 2) {
+          if (Math.random() > 0.7 - (intensity * 0.3)) {
+            const pt = trailRef.current[i];
+            const nextPt = trailRef.current[i + 1];
+            const ratio = i / trailCount;
+
+            ctx.beginPath();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1 + (intensity * 2);
+            ctx.globalAlpha = (0.3 + intensity * 0.4) * ratio;
+
+            const startX = pt.x + playerCenterX;
+            const startY = pt.y + playerCenterY;
+            const endX = nextPt.x + playerCenterX;
+            const endY = nextPt.y + playerCenterY;
+
+            const midX = (startX + endX) / 2 + (Math.random() - 0.5) * 30 * intensity;
+            const midY = (startY + endY) / 2 + (Math.random() - 0.5) * 30 * intensity;
+
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(midX, midY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+          }
+        }
+      }
       ctx.restore();
-      ctx.globalAlpha = 1.0;
     }
 
     // Obstacles
@@ -284,60 +344,101 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.save();
 
       if (obj.type === 'SPIKE') {
-        ctx.fillStyle = obj.color;
-        ctx.shadowBlur = 10 + (intensity * 20);
+        // Base Glow
+        ctx.shadowBlur = 10 + (intensity * 30);
         ctx.shadowColor = obj.color;
+
+        // Spike Body
+        ctx.fillStyle = obj.color;
         ctx.beginPath();
         ctx.moveTo(obj.pos.x, objY + obj.size.height);
         ctx.lineTo(obj.pos.x + obj.size.width / 2, objY);
         ctx.lineTo(obj.pos.x + obj.size.width, objY + obj.size.height);
         ctx.closePath();
         ctx.fill();
+
+        // Pulsing Tip
         ctx.fillStyle = 'white';
-        ctx.globalAlpha = 0.3 + pulse * 0.4;
+        ctx.globalAlpha = 0.4 + pulse * 0.5;
         ctx.beginPath();
-        ctx.arc(obj.pos.x + obj.size.width / 2, objY, 4 + intensity * 6, 0, Math.PI * 2);
+        ctx.arc(obj.pos.x + obj.size.width / 2, objY, 4 + intensity * 8, 0, Math.PI * 2);
         ctx.fill();
-        if (Math.random() > 0.95 - (intensity * 0.1)) {
-          drawElectricArc(ctx, obj.pos.x + obj.size.width / 2, objY, obj.pos.x + (Math.random() - 0.5) * 40, objY + 30, 'white', 1 + intensity);
+
+        // Tier-Scaled Arcs
+        const arcChance = 0.95 - (intensity * 0.2);
+        if (Math.random() > arcChance) {
+          const arcEndOffset = (Math.random() - 0.5) * 60;
+          drawElectricArc(ctx, obj.pos.x + obj.size.width / 2, objY, obj.pos.x + obj.size.width / 2 + arcEndOffset, objY + 40, 'white', 1 + intensity);
         }
+
+        // Secondary "Aura" Ring
+        if (intensity > 0.6) {
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.1 * pulse;
+          ctx.beginPath();
+          ctx.arc(obj.pos.x + obj.size.width / 2, objY, 20 + intensity * 20, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
       } else if (['BLOCK', 'MOVING_BLOCK', 'DESTRUCTIBLE_BLOCK'].includes(obj.type)) {
+        // Block Body
         ctx.fillStyle = obj.color;
-        ctx.shadowBlur = intensity > 0.4 ? 15 : 0;
+        ctx.shadowBlur = 10 + intensity * 20;
         ctx.shadowColor = obj.color;
         ctx.fillRect(obj.pos.x, objY, obj.size.width, obj.size.height);
+
+        // Internal Circuitry
+        drawCircuitLines(ctx, obj.pos.x, objY, obj.size.width, obj.size.height, intensity);
+
+        // Edge Highlights
         ctx.strokeStyle = 'white';
-        ctx.globalAlpha = 0.1 + intensity * 0.3;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(obj.pos.x + 5, objY + 5, obj.size.width - 10, obj.size.height - 10);
-        const scanPos = (time % 2000) / 2000;
-        ctx.fillStyle = intensity > 0.5 ? 'white' : selectedSkin.glowColor;
         ctx.globalAlpha = 0.2 + intensity * 0.4;
-        ctx.fillRect(obj.pos.x, objY + (obj.size.height * scanPos), obj.size.width, 2);
-        if (obj.type === 'DESTRUCTIBLE_BLOCK') {
-          ctx.fillStyle = '#ff0055';
-          ctx.globalAlpha = 0.2 + pulse * 0.3;
-          ctx.fillRect(obj.pos.x + 10, objY + 10, obj.size.width - 20, obj.size.height - 20);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(obj.pos.x + 2, objY + 2, obj.size.width - 4, obj.size.height - 4);
+
+        // Sweeping Energy Scan
+        const scanPos = (time % 1500) / 1500;
+        ctx.fillStyle = 'white';
+        ctx.globalAlpha = 0.1 + intensity * 0.3;
+        ctx.fillRect(obj.pos.x, objY + (obj.size.height * scanPos), obj.size.width, 3);
+
+        // Corner Crackle
+        if (intensity > 0.7 && Math.random() > 0.97) {
+          const corner = Math.floor(Math.random() * 4);
+          let cx = obj.pos.x, cy = objY;
+          if (corner === 1) cx += obj.size.width;
+          else if (corner === 2) { cx += obj.size.width; cy += obj.size.height; }
+          else if (corner === 3) cy += obj.size.height;
+          drawElectricArc(ctx, cx, cy, cx + (Math.random() - 0.5) * 30, cy + (Math.random() - 0.5) * 30, 'white', 1.2);
         }
-        if (intensity > 0.6 && Math.random() > 0.98) {
-          drawElectricArc(ctx, obj.pos.x, objY, obj.pos.x + 10, objY + 10, 'white', 1.5);
+
+        if (obj.type === 'DESTRUCTIBLE_BLOCK') {
+          // Destructible Core Glow
+          const corePulse = Math.sin(time / 100) * 0.5 + 0.5;
+          ctx.fillStyle = '#ff0055';
+          ctx.globalAlpha = 0.1 + corePulse * 0.3;
+          ctx.fillRect(obj.pos.x + 8, objY + 8, obj.size.width - 16, obj.size.height - 16);
+          // Crackle warning lines
+          if (corePulse > 0.8) {
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(obj.pos.x + 4, objY + 4, obj.size.width - 8, obj.size.height - 8);
+          }
         }
       } else if (obj.type === 'COLLECTABLE') {
         ctx.save();
         ctx.translate(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2);
         ctx.rotate(time / 600);
-        ctx.shadowBlur = 10 + pulse * 10;
+        ctx.shadowBlur = 10 + pulse * 15;
         ctx.shadowColor = COLORS.core;
         ctx.fillStyle = COLORS.core;
         ctx.fillRect(-obj.size.width / 2, -obj.size.height / 2, obj.size.width, obj.size.height);
-        ctx.restore();
-      } else if (['MAGNET', 'SHIELD', 'SLOW_MO'].includes(obj.type)) {
-        ctx.save();
-        ctx.translate(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2);
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = obj.color;
-        ctx.fillStyle = obj.color;
-        ctx.beginPath(); ctx.arc(0, 0, obj.size.width / 2, 0, Math.PI * 2); ctx.fill();
+
+        // Inner white shine
+        ctx.fillStyle = 'white';
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(-obj.size.width / 4, -obj.size.height / 4, obj.size.width / 2, obj.size.height / 2);
         ctx.restore();
       }
       ctx.restore();
@@ -345,30 +446,35 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     // Particles
     particlesRef.current.forEach(p => {
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle = p.color;
-      if (p.type === 'electric') {
-        const jitter = (Math.random() - 0.5) * 4;
-        ctx.fillRect(p.x + jitter, p.y + jitter, 2, 2);
-      } else {
-        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-      }
+      ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+      if (p.type === 'electric') { const jitter = (Math.random() - 0.5) * 4; ctx.fillRect(p.x + jitter, p.y + jitter, 2, 2); }
+      else if (p.type === 'trail-flake') { ctx.fillRect(p.x - 1, p.y - 1, 2, 2); }
+      else ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
     });
     ctx.globalAlpha = 1.0;
     ctx.restore();
 
-    // Player
+    // Player Rendering
     if (!deathTimeRef.current) {
       ctx.save();
-      const pScreenX = p.pos.x - worldXRef.current + p.width / 2;
-      const pScreenY = p.pos.y + p.height / 2;
+      let pScreenX = p.pos.x - worldXRef.current + p.width / 2;
+      let pScreenY = p.pos.y + p.height / 2;
+
+      // Speed Glitch Effect
+      if (intensity > 0.85 && Math.random() > 0.96) {
+        pScreenX += (Math.random() - 0.5) * 15;
+      }
+
       ctx.translate(pScreenX, pScreenY);
-      if (hasShield) {
-        ctx.strokeStyle = COLORS.shield; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.width, 0, Math.PI * 2); ctx.stroke();
+
+      if (hasShield) { ctx.strokeStyle = COLORS.shield; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.width, 0, Math.PI * 2); ctx.stroke(); }
+      if (hasMagnet) { ctx.strokeStyle = COLORS.magnet; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(0, 0, PHYSICS.MAGNET_RADIUS * pulse, 0, Math.PI * 2); ctx.stroke(); }
+
+      // Player Discharge
+      if (intensity > 0.5 && Math.random() > 0.9) {
+        drawElectricArc(ctx, 0, 0, (Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100, 'white', intensity);
       }
-      if (hasMagnet) {
-        ctx.strokeStyle = COLORS.magnet; ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.arc(0, 0, PHYSICS.MAGNET_RADIUS * pulse, 0, Math.PI * 2); ctx.stroke();
-      }
+
       ctx.rotate(p.rotation);
       ctx.shadowBlur = 20 + pulse * 15 + intensity * 20;
       ctx.shadowColor = selectedSkin.glowColor;
@@ -377,6 +483,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.restore();
     }
     ctx.restore();
+
+    // Decay Shake
+    shakeRef.current *= 0.9;
   }, [selectedSkin, lastSpeedTierRef, playerRef]);
 
   const update = useCallback((time: number) => {
@@ -400,73 +509,71 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     const targetSpeed = Math.min(PHYSICS.BASE_SPEED + (scoreRef.current * PHYSICS.SPEED_INCREMENT), PHYSICS.MAX_SPEED);
     const groundY = (canvasRef.current?.height || 600) * 0.75;
 
+    const wasGrounded = p.isGrounded;
     updatePhysics(dt, targetSpeed, groundY);
+    if (!wasGrounded && p.isGrounded) addShake(4);
+
     if (onPowerUpsUpdate) onPowerUpsUpdate([...p.activePowerUps]);
 
-    // Dynamic Trail Limit: More points at higher speeds for a longer trail
     const tier = lastSpeedTierRef.current;
+    const intensity = Math.min((tier - 1) / 8, 1.0);
+
     trailRef.current.push({ x: p.pos.x, y: p.pos.y });
-    const maxTrailPoints = 15 + tier * 5;
+    const maxTrailPoints = 15 + tier * 6; // Scales trail length with speed
     if (trailRef.current.length > maxTrailPoints) trailRef.current.shift();
 
-    worldXRef.current = p.pos.x - PLAYER_LEFT_OFFSET;
+    // Spawn trail flakes at high intensity
+    if (intensity > 0.4 && Math.random() > 0.7) {
+      particlesRef.current.push({
+        x: p.pos.x + (p.width / 2),
+        y: p.pos.y + (p.height / 2) + (Math.random() - 0.5) * 20,
+        vx: -2 - Math.random() * 5,
+        vy: (Math.random() - 0.5) * 2,
+        life: 0.5,
+        color: selectedSkin.glowColor,
+        type: 'trail-flake'
+      });
+    }
 
+    worldXRef.current = p.pos.x - PLAYER_LEFT_OFFSET;
     particlesRef.current.forEach(part => {
       part.x += part.vx * dt;
       part.y += part.vy * dt;
-      part.life -= (part.type === 'electric' ? 0.03 : 0.015) * dt;
+      part.life -= (part.type === 'electric' ? 0.03 : part.type === 'trail-flake' ? 0.05 : 0.015) * dt;
     });
     particlesRef.current = particlesRef.current.filter(part => part.life > 0);
 
     for (let i = levelRef.current.length - 1; i >= 0; i--) {
       const obj = levelRef.current[i];
       if (obj.pos.x < worldXRef.current - 500 || obj.pos.x > worldXRef.current + 3000) continue;
-
       const objY = groundY - (obj.pos.y + obj.size.height);
-      const isColliding =
-        p.pos.x < obj.pos.x + obj.size.width && p.pos.x + p.width > obj.pos.x &&
-        p.pos.y < objY + obj.size.height && p.pos.y + p.height > objY;
+      const isColliding = p.pos.x < obj.pos.x + obj.size.width && p.pos.x + p.width > obj.pos.x && p.pos.y < objY + obj.size.height && p.pos.y + p.height > objY;
 
       if (isColliding) {
         if (obj.type === 'COLLECTABLE') {
           collectedInRunRef.current += 1; onCoreCollect(collectedInRunRef.current);
-          audioService.playScore();
-          createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || COLORS.core);
+          audioService.playScore(); createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || COLORS.core);
           levelRef.current.splice(i, 1); continue;
         }
-
         if (['MAGNET', 'SHIELD', 'SLOW_MO'].includes(obj.type)) {
-          addPowerUp(obj.type as PowerUpType);
-          audioService.playScore();
-          createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || '#ffffff');
+          addPowerUp(obj.type as PowerUpType); audioService.playScore(); createCollectBurst(obj.pos.x + obj.size.width / 2, objY + obj.size.height / 2, obj.color || '#ffffff');
           levelRef.current.splice(i, 1); continue;
         }
-
         if (['BLOCK', 'MOVING_BLOCK', 'DESTRUCTIBLE_BLOCK'].includes(obj.type) && p.vel.y >= 0 && p.pos.y + p.height < objY + 25) {
-          landOnPlatform(objY); continue;
+          landOnPlatform(objY); addShake(3); continue;
         }
-
         if (p.activePowerUps.some(pu => pu.type === 'SHIELD')) {
-          removePowerUp('SHIELD'); flashOpacityRef.current = 0.5; audioService.playJump();
+          removePowerUp('SHIELD'); flashOpacityRef.current = 0.5; audioService.playJump(); addShake(15);
           if (obj.type === 'SPIKE') levelRef.current.splice(i, 1); continue;
         }
-
-        audioService.playDeath(); deathTimeRef.current = time; flashOpacityRef.current = 0.8;
-        for (let k = 0; k < 30; k++) {
-          particlesRef.current.push({ x: p.pos.x + p.width / 2, y: p.pos.y + p.height / 2, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life: 1.0, color: selectedSkin.primaryColor });
-        }
-        requestRef.current = requestAnimationFrame(update);
-        return;
+        audioService.playDeath(); deathTimeRef.current = time; flashOpacityRef.current = 0.8; addShake(25);
+        for (let k = 0; k < 30; k++) { particlesRef.current.push({ x: p.pos.x + p.width / 2, y: p.pos.y + p.height / 2, vx: (Math.random() - 0.5) * 20, vy: (Math.random() - 0.5) * 20, life: 1.0, color: selectedSkin.primaryColor }); }
+        requestRef.current = requestAnimationFrame(update); return;
       }
     }
 
     const newScore = Math.floor(p.pos.x / 10);
-    if (newScore > scoreRef.current) {
-      scoreRef.current = newScore;
-      onScoreUpdate(newScore);
-      lastSpeedTierRef.current = Math.floor(newScore / 500) + 1;
-    }
-
+    if (newScore > scoreRef.current) { scoreRef.current = newScore; onScoreUpdate(newScore); lastSpeedTierRef.current = Math.floor(newScore / 500) + 1; }
     render();
     requestRef.current = requestAnimationFrame(update);
   }, [onGameOver, onScoreUpdate, onCoreCollect, selectedSkin, updatePhysics, landOnPlatform, render, addPowerUp, removePowerUp, onPowerUpsUpdate, playerRef, createCollectBurst]);
