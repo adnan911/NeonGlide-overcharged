@@ -218,6 +218,11 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
         <div className="relative group w-full">
           <div className="absolute -inset-8 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-500/30 transition-all duration-700"></div>
           <div className="relative space-y-2 flex flex-col items-center">
+            <div className="relative mb-4 w-24 h-24 hover-jitter transition-transform duration-300 hover:scale-110">
+              <img src="/icon.png" alt="Neon Glide Logo" className="w-full h-full object-contain filter drop-shadow-[0_0_15px_rgba(0,242,255,0.4)]" />
+              <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full -z-10 animate-pulse" />
+            </div>
+
             <div className="flex items-center justify-center gap-3 mb-[-10px]">
               <Zap className="text-cyan-400 fill-cyan-400 animate-pulse" size={14} />
               <span className="text-[10px] font-black uppercase tracking-[0.6em] text-cyan-400/60">Plasma Grid v2.5</span>
