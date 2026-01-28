@@ -8,4 +8,18 @@ if (!PRIVATE_KEY) {
 }
 
 const wallet = new ethers.Wallet(PRIVATE_KEY);
+const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+const walletWithProvider = wallet.connect(provider);
+
 console.log(`\nDeployment Wallet Address: ${wallet.address}\n`);
+
+async function checkBalance() {
+    try {
+        const balance = await provider.getBalance(wallet.address);
+        console.log(`Balance: ${ethers.formatEther(balance)} ETH`);
+    } catch (error) {
+        console.error("Error fetching balance:", error.message);
+    }
+}
+
+checkBalance();

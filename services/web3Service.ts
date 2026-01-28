@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { CoinbaseWalletSDK } from '@coinbase/wallet-sdk';
 
 const BASE_MAINNET_CHAIN_ID = '0x2105'; // 8453
-const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000'; // Replace with deployed address after hardhat run
+const CONTRACT_ADDRESS = '0xBb13004d97A6a2784101c04be01d0130C665261C'; // Deployed to Base Mainnet
 
 const APP_NAME = 'Neon Glide Onchain';
 const APP_LOGO_URL = 'https://avatars.githubusercontent.com/u/108554348?v=4';
@@ -86,7 +86,7 @@ class Web3Service {
   }
 
   async submitScoreOnChain(score: number) {
-    if (!this.signer || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return false;
+    if (!this.signer) return false;
     try {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
       const tx = await contract.recordScore(Math.floor(score));
@@ -99,7 +99,7 @@ class Web3Service {
   }
 
   async syncCoresOnChain(amount: number) {
-    if (!this.signer || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return false;
+    if (!this.signer) return false;
     try {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
       const tx = await contract.syncCores(amount);
@@ -112,7 +112,7 @@ class Web3Service {
   }
 
   async mint() {
-    if (!this.signer || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return null;
+    if (!this.signer) return null;
     try {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
       const tx = await contract.mint();
@@ -125,7 +125,7 @@ class Web3Service {
   }
 
   async getPlayerData() {
-    if (!this.signer || !this.address || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000') return null;
+    if (!this.signer || !this.address) return null;
     try {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
       const data = await contract.getPlayerData(this.address);
