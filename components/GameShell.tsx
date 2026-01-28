@@ -55,6 +55,8 @@ const GameShell: React.FC = () => {
   const [activePowerUps, setActivePowerUps] = useState<ActivePowerUp[]>([]);
   const [isOnchainSyncing, setIsOnchainSyncing] = useState(false);
   const [onchainStatus, setOnchainStatus] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadCard = async () => {
@@ -70,6 +72,11 @@ const GameShell: React.FC = () => {
         onclone: (clonedDoc) => {
           const el = clonedDoc.querySelector('[data-card-ref="true"]') as HTMLElement;
           if (el) {
+            // Remove animations and 3D transforms for clean capture
+            el.style.animation = 'none';
+            el.style.transform = 'none';
+            el.style.transition = 'none';
+
             // Force Image Dimensions & Styling
             el.style.width = '450px';
             el.style.height = '800px';
@@ -90,12 +97,29 @@ const GameShell: React.FC = () => {
         logging: false,
         useCORS: true
       });
-      const link = document.createElement('a');
-      link.download = `neon-glide-access-card-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      setPreviewUrl(canvas.toDataURL('image/png'));
+      setShowPreviewModal(true);
     } catch (err) {
       console.error("Failed to generate card image", err);
+      alert("Failed to generate preview. Try again.");
+    }
+  };
+
+  const handleDownloadFile = () => {
+    if (!previewUrl) return;
+    const link = document.createElement('a');
+    link.download = `neon-glide-access-card-${Date.now()}.png`;
+    link.href = previewUrl;
+    link.click();
+  };
+
+  const handleMintFromPreview = async () => {
+    if (!previewUrl) return;
+    try {
+      await web3Service.mint();
+      alert("Minting Initiated! Check your wallet.");
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -276,7 +300,7 @@ const GameShell: React.FC = () => {
           <div
             ref={cardRef}
             data-card-ref="true"
-            className="flex flex-col items-center p-6 sm:p-8 bg-slate-900/90 rounded-[2.5rem] sm:rounded-[4rem] border border-white/10 shadow-[0_0_50px_rgba(6,182,212,0.15)] space-y-4 sm:space-y-8 max-w-xs sm:max-w-sm w-full my-auto animate-in zoom-in-95 duration-500 relative overflow-hidden transform-style-3d hover:rotate-x-2 hover:rotate-y-2 transition-transform duration-300"
+            className="flex flex-col items-center p-5 sm:p-6 bg-slate-900/90 rounded-[2rem] sm:rounded-[3rem] border border-white/10 shadow-[0_0_50px_rgba(6,182,212,0.15)] space-y-3 sm:space-y-6 max-w-xs sm:max-w-sm w-full my-auto animate-in zoom-in-95 duration-500 relative overflow-hidden transform-style-3d hover:rotate-x-2 hover:rotate-y-2 transition-transform duration-300 max-h-[85vh]"
             style={{
               animation: 'float 6s ease-in-out infinite',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 30px rgba(6, 182, 212, 0.1) inset'
@@ -309,22 +333,22 @@ const GameShell: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-800/50 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/5 flex flex-col items-center">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Score</span>
-                    <span className="text-2xl sm:text-3xl font-black text-white font-orbitron tabular-nums">{currentScore.toFixed(0)}<span className="text-sm ml-1 text-slate-500 italic">M</span></span>
+                <div className="grid grid-cols-2 gap-2 w-full">
+                  <div className="bg-slate-800/50 p-3 rounded-[1.2rem] border border-white/5 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Score</span>
+                    <span className="text-xl sm:text-2xl font-black text-white font-orbitron tabular-nums">{currentScore.toFixed(0)}<span className="text-[10px] ml-1 text-slate-500 italic">M</span></span>
                   </div>
-                  <div className="bg-cyan-500/10 p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.5rem] border border-cyan-500/20 flex flex-col items-center">
-                    <span className="text-[10px] font-black text-cyan-500/60 uppercase tracking-widest mb-1">Cores</span>
-                    <span className="text-2xl sm:text-3xl font-black text-cyan-400 font-orbitron tabular-nums">+{currentRunCores}</span>
+                  <div className="bg-cyan-500/10 p-3 rounded-[1.2rem] border border-cyan-500/20 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-black text-cyan-500/60 uppercase tracking-widest mb-0.5">Cores</span>
+                    <span className="text-xl sm:text-2xl font-black text-cyan-400 font-orbitron tabular-nums">+{currentRunCores}</span>
                   </div>
                 </div>
 
-                <div className="col-span-2 bg-slate-900/50 p-4 rounded-[1.5rem] border border-white/5 flex flex-col items-center relative overflow-hidden group">
-                  <div className="w-full h-24 sm:h-32 z-10 flex items-center justify-center">
+                <div className="col-span-2 bg-slate-900/50 p-2 rounded-[1.5rem] border border-white/5 flex flex-col items-center relative overflow-hidden group">
+                  <div className="w-full h-20 sm:h-28 z-10 flex items-center justify-center">
                     <img src={nftPreview} alt="Grid Pass" className="h-full object-contain" loading="lazy" />
                   </div>
-                  <div className="absolute bottom-2 right-3 text-[8px] font-mono text-white/20">NFT-721</div>
+                  <div className="absolute bottom-1 right-3 text-[8px] font-mono text-white/20">NFT-721</div>
                 </div>
               </div>
             </div>
@@ -369,6 +393,36 @@ const GameShell: React.FC = () => {
                   DOWNLOAD
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPreviewModal && previewUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-2xl animate-in fade-in duration-300">
+          <div className="flex flex-col items-center space-y-6 max-w-sm w-full">
+            <div className="relative w-full aspect-[9/16] max-h-[60vh] rounded-[2rem] overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.3)] border-2 border-cyan-500/50">
+              <img src={previewUrl} className="w-full h-full object-contain bg-slate-950" alt="Card Preview" />
+            </div>
+
+            <div className="w-full space-y-4">
+              <div className="text-center space-y-1">
+                <h3 className="text-2xl font-black font-orbitron italic text-white/90 uppercase">Own It</h3>
+                <div className="h-1 w-12 bg-cyan-500 mx-auto rounded-full" />
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={handleMintFromPreview} className="flex-1 py-4 bg-slate-900 border border-cyan-500/50 hover:bg-cyan-500/10 text-cyan-400 rounded-2xl font-black uppercase text-sm transition-all active:scale-95">
+                  [Onchain]
+                </button>
+                <button onClick={handleDownloadFile} className="flex-1 py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-2xl font-black uppercase text-sm transition-all shadow-lg shadow-cyan-500/20 active:scale-95">
+                  [Offchain]
+                </button>
+              </div>
+
+              <button onClick={() => setShowPreviewModal(false)} className="w-full py-3 text-slate-500 hover:text-white text-xs font-bold uppercase tracking-widest">
+                Close Preview
+              </button>
             </div>
           </div>
         </div>
