@@ -200,12 +200,12 @@ const GameShell: React.FC = () => {
       accent: 'bg-purple-400'
     };
     return {
-      color: 'text-cyan-400',
-      border: 'border-cyan-500/50',
-      bg: 'bg-cyan-500/10',
-      shadow: 'shadow-[0_0_40px_rgba(0,242,255,0.3)]',
+      color: 'text-yellow-400',
+      border: 'border-yellow-500/50',
+      bg: 'bg-yellow-500/10',
+      shadow: 'shadow-[0_0_40px_rgba(251,191,36,0.3)]',
       label: 'CHARGED',
-      accent: 'bg-cyan-400'
+      accent: 'bg-yellow-400'
     };
   };
 
@@ -321,12 +321,12 @@ const GameShell: React.FC = () => {
               </div>
 
               <div className="flex flex-col gap-3">
-                <div className={`flex flex-col items-center p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border ${theme.border} ${theme.bg} ${theme.shadow} space-y-3 sm:space-y-4 backdrop-blur-2xl`}>
-                  <div className="flex items-center justify-between w-full px-1 mb-1">
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${theme.color} opacity-80`}>Energy State: {theme.label}</span>
-                    <span className="text-xl font-black text-white font-orbitron">TIER {speedTier}</span>
+                <div className={`flex flex-col items-center p-3 rounded-[1.5rem] border ${theme.border} ${theme.bg} ${theme.shadow} space-y-1 backdrop-blur-2xl`}>
+                  <div className="flex items-end justify-between w-full px-1 gap-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${theme.color} opacity-80 whitespace-nowrap mb-0.5`}>Energy State: {theme.label}</span>
+                    <span className="text-xl font-black text-white font-orbitron whitespace-nowrap leading-none">TIER {speedTier}</span>
                   </div>
-                  <div className="w-full space-y-2">
+                  <div className="w-full">
                     <div className="relative w-full h-3 bg-black/60 rounded-full overflow-hidden border border-white/5 p-0.5">
                       <div className={`h-full ${theme.accent} transition-all duration-1500 ease-out shadow-[0_0_20px_rgba(255,255,255,0.5)] rounded-full`} style={{ width: `${progressToNext}%` }} />
                     </div>
