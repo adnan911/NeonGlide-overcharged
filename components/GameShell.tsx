@@ -322,9 +322,9 @@ const GameShell: React.FC = () => {
 
               <div className="flex flex-col gap-3">
                 <div className={`flex flex-col items-center p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border ${theme.border} ${theme.bg} ${theme.shadow} space-y-3 sm:space-y-4 backdrop-blur-2xl`}>
-                  <div className="flex flex-col items-center gap-1">
-                    <div className={`text-[10px] font-black uppercase tracking-[0.4em] ${theme.color} opacity-70`}>Energy State: {theme.label}</div>
-                    <div className="text-3xl sm:text-4xl font-black text-white font-orbitron">TIER {speedTier}</div>
+                  <div className="flex items-center justify-between w-full px-1 mb-1">
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${theme.color} opacity-80`}>Energy State: {theme.label}</span>
+                    <span className="text-xl font-black text-white font-orbitron">TIER {speedTier}</span>
                   </div>
                   <div className="w-full space-y-2">
                     <div className="relative w-full h-3 bg-black/60 rounded-full overflow-hidden border border-white/5 p-0.5">
@@ -354,7 +354,7 @@ const GameShell: React.FC = () => {
             </div>
 
             {onchainStatus && (
-              <div className={`flex items-center gap-3 px-5 py-2 rounded-2xl border ${onchainStatus.includes('Complete') ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-slate-800/40 border-white/5 text-slate-400'} text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2`}>
+              <div className={`flex items-center gap-3 px-5 py-2 rounded-2xl border ${onchainStatus.includes('Complete') ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400' : 'bg-slate-800/40 border-white/5 text-slate-400'} text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-bottom-2 whitespace-nowrap`}>
                 {isOnchainSyncing ? <Loader2 size={14} className="animate-spin" /> : <CloudLightning size={14} />}
                 {onchainStatus}
               </div>
