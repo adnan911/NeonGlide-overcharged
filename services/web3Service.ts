@@ -23,6 +23,7 @@ const NEON_GLIDE_ABI = [
   "function syncCores(uint256 _amount) public",
   "function getPlayerData(address _player) public view returns (uint256 highScore, uint256 totalCores)",
   "function mint() public returns (uint256)",
+  "function balanceOf(address owner) public view returns (uint256)",
   "event ScoreRecorded(address indexed player, uint256 score, uint256 timestamp)"
 ];
 
@@ -136,6 +137,18 @@ class Web3Service {
     } catch (error) {
       console.error("Fetch Data Error:", error);
       return null;
+    }
+  }
+  async checkOwnership(address: string) {
+    try {
+      if (!this.signer) return false;
+
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, NEON_GLIDE_ABI, this.signer);
+      const balance = await contract.balanceOf(address);
+      return Number(balance) > 0;
+    } catch (error) {
+      console.error("Ownership Check Error:", error);
+      return false;
     }
   }
 }

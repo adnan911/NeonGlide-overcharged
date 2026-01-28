@@ -105,7 +105,21 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
   const handleConnectWallet = async () => {
     setIsConnecting(true);
     const addr = await web3Service.connect();
-    if (addr) setWalletAddress(addr);
+    if (addr) {
+      setWalletAddress(addr);
+
+      // Check for Game Pass
+      const hasPass = await web3Service.checkOwnership(addr);
+      onUpdateSettings({
+        ...settings,
+        hasGamePass: hasPass
+      });
+
+      if (hasPass) {
+        // Automatically hide mint modal if open
+        setShowMintModal(false);
+      }
+    }
     setIsConnecting(false);
   };
 
@@ -171,6 +185,10 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
   };
 
   const handleStart = () => {
+    if (!settings.hasGamePass) {
+      setShowMintModal(true);
+      return;
+    }
     onStart(settings);
   };
 
@@ -249,7 +267,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] z-0" />
             <div className="relative flex h-full w-full items-center justify-center rounded-[1.9rem] bg-slate-950/80 px-8 py-6 text-2xl font-black text-white backdrop-blur-3xl group-hover:bg-slate-900/20 transition-colors">
               <Play className="mr-3 w-8 h-8 fill-current text-cyan-400" />
-              <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'Initiate Surge'}</span>
+              <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'ENTER GRID (PASS REQUIRED)'}</span>
             </div>
           </button>
 
