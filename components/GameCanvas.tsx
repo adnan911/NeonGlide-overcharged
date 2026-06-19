@@ -12,6 +12,7 @@ interface GameCanvasProps {
   onScoreUpdate: (score: number) => void;
   onCoreCollect: (count: number) => void;
   onPowerUpsUpdate?: (powerUps: ActivePowerUp[]) => void;
+  onTrialLimitReached?: () => void;
 }
 
 interface Particle {
@@ -25,7 +26,7 @@ interface Particle {
   width?: number;
 }
 
-const VIEW_SCALE = 0.65;
+const VIEW_SCALE = 0.35;
 const PLAYER_LEFT_OFFSET = 80;
 
 const GameCanvas: React.FC<GameCanvasProps> = ({
@@ -34,7 +35,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   onGameOver,
   onScoreUpdate,
   onCoreCollect,
-  onPowerUpsUpdate
+  onPowerUpsUpdate,
+  onTrialLimitReached
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(null);
@@ -545,7 +547,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
 
     for (let i = levelRef.current.length - 1; i >= 0; i--) {
       const obj = levelRef.current[i];
-      if (obj.pos.x < worldXRef.current - 500 || obj.pos.x > worldXRef.current + 3000) continue;
+      if (obj.pos.x < worldXRef.current - 500 || obj.pos.x > worldXRef.current + (canvasRef.current?.width || 1200) / VIEW_SCALE + 1000) continue;
       const objY = groundY - (obj.pos.y + obj.size.height);
       const isColliding = p.pos.x < obj.pos.x + obj.size.width && p.pos.x + p.width > obj.pos.x && p.pos.y < objY + obj.size.height && p.pos.y + p.height > objY;
 
@@ -573,7 +575,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
 
     const newScore = Math.floor(p.pos.x / 10);
-    if (newScore > scoreRef.current) { scoreRef.current = newScore; onScoreUpdate(newScore); lastSpeedTierRef.current = Math.floor(newScore / 500) + 1; }
+    if (newScore > scoreRef.current) {
+      if (!settings.hasGamePass && newScore >= 3000) {
+        scoreRef.current = 3000;
+        onScoreUpdate(3000);
+        if (onTrialLimitReached) {
+          onTrialLimitReached();
+        }
+        return;
+      }
+      scoreRef.current = newScore;
+      onScoreUpdate(newScore);
+      lastSpeedTierRef.current = Math.floor(newScore / 500) + 1;
+    }
     render();
     requestRef.current = requestAnimationFrame(update);
   }, [onGameOver, onScoreUpdate, onCoreCollect, selectedSkin, updatePhysics, landOnPlatform, render, addPowerUp, removePowerUp, onPowerUpsUpdate, playerRef, createCollectBurst]);

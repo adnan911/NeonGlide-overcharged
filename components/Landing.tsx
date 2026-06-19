@@ -92,6 +92,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
   const [mintError, setMintError] = useState<string | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showTrialNotice, setShowTrialNotice] = useState(false);
 
   useEffect(() => {
     const initWeb3 = async () => {
@@ -100,7 +101,15 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
       if (addr) setWalletAddress(addr);
     };
     initWeb3();
-  }, []);
+
+    // Show trial popup automatically on load for players without a pass
+    if (!settings.hasGamePass) {
+      const timer = setTimeout(() => {
+        setShowTrialNotice(true);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [settings.hasGamePass]);
 
   const handleConnectWallet = async () => {
     setIsConnecting(true);
@@ -185,10 +194,6 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
   };
 
   const handleStart = () => {
-    if (!settings.hasGamePass) {
-      setShowMintModal(true);
-      return;
-    }
     onStart(settings);
   };
 
@@ -264,15 +269,13 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
         <div className="w-full space-y-4">
           <button
             onClick={handleStart}
-            className={`group hover-jitter relative w-full overflow-hidden rounded-[2rem] p-[2px] active:scale-95 transition-all duration-300 ${settings.hasGamePass ? 'animate-surge bg-slate-900 shadow-[0_0_30px_rgba(0,242,255,0.2)]' : 'bg-cyan-500/20 shadow-[0_0_20px_rgba(0,242,255,0.1)]'}`}
+            className="group hover-jitter relative w-full overflow-hidden rounded-[2rem] p-[2px] active:scale-95 transition-all duration-300 animate-surge bg-slate-900 shadow-[0_0_30px_rgba(0,242,255,0.2)]"
           >
-            {settings.hasGamePass && (
-              <div className="absolute inset-[-1000%] animate-[spin_1.5s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00f2ff_0%,#7c3aed_25%,#ff0055_50%,#7c3aed_75%,#00f2ff_100%)] opacity-80" />
-            )}
+            <div className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#00f2ff_0%,#7c3aed_25%,#ff0055_50%,#7c3aed_75%,#00f2ff_100%)] opacity-80" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] z-0" />
             <div className="relative flex h-full w-full items-center justify-center rounded-[1.9rem] bg-slate-950/80 px-8 py-6 text-2xl font-black text-white backdrop-blur-3xl group-hover:bg-slate-900/20 transition-colors">
               <Play className="mr-3 w-8 h-8 fill-current text-cyan-400" />
-              <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'ENTER GRID (PASS REQUIRED)'}</span>
+              <span className="tracking-tighter italic uppercase">{settings.hasGamePass ? 'Initiate Overcharge' : 'ENTER GRID (FREE TRIAL)'}</span>
             </div>
           </button>
 
@@ -383,18 +386,56 @@ const Landing: React.FC<LandingProps> = ({ onStart, highScores, settings, onUpda
         </div>
       )}
 
-      {showInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl" onClick={() => setShowInfo(false)}>
-          <div className="bg-slate-900 border border-cyan-500/30 rounded-[3rem] p-12 max-w-sm w-full space-y-8 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
-            <div className="space-y-2"><Zap className="text-cyan-400 mb-1" size={24} /><h2 className="text-4xl font-black font-orbitron italic text-white tracking-tighter uppercase">Operations</h2></div>
-            <div className="space-y-6">
-              <div className="flex gap-5"><div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center font-black text-cyan-400 border border-cyan-500/20 flex-shrink-0">1</div><p className="text-slate-400 text-sm leading-relaxed">TAP or SPACE to Jump. Constant velocity. Navigate through the overcharged spikes.</p></div>
-              <div className="flex gap-5"><div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center font-black text-cyan-400 border border-cyan-500/20 flex-shrink-0">2</div><p className="text-slate-400 text-sm leading-relaxed">Collect Plasma Cores to unlock new combat chassis in the Shop.</p></div>
+        {showInfo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl" onClick={() => setShowInfo(false)}>
+            <div className="bg-slate-900 border border-cyan-500/30 rounded-[3rem] p-12 max-w-sm w-full space-y-8 animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+              <div className="space-y-2"><Zap className="text-cyan-400 mb-1" size={24} /><h2 className="text-4xl font-black font-orbitron italic text-white tracking-tighter uppercase">Operations</h2></div>
+              <div className="space-y-6">
+                <div className="flex gap-5"><div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center font-black text-cyan-400 border border-cyan-500/20 flex-shrink-0">1</div><p className="text-slate-400 text-sm leading-relaxed">TAP or SPACE to Jump. Constant velocity. Navigate through the overcharged spikes.</p></div>
+                <div className="flex gap-5"><div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center font-black text-cyan-400 border border-cyan-500/20 flex-shrink-0">2</div><p className="text-slate-400 text-sm leading-relaxed">Collect Plasma Cores to unlock new combat chassis in the Shop.</p></div>
+              </div>
+              <button onClick={() => setShowInfo(false)} className="w-full py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xl rounded-[1.5rem] transition-all hover-jitter uppercase tracking-widest">Acknowledged</button>
             </div>
-            <button onClick={() => setShowInfo(false)} className="w-full py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xl rounded-[1.5rem] transition-all hover-jitter uppercase tracking-widest">Acknowledged</button>
           </div>
-        </div>
-      )}
+        )}
+
+        {showTrialNotice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl animate-in fade-in duration-300">
+            <div className="bg-slate-900 border border-cyan-500/30 rounded-[3rem] p-8 max-w-sm w-full space-y-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+              <button onClick={() => setShowTrialNotice(false)} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors"><X size={24} /></button>
+              <div className="space-y-2 flex flex-col items-center text-center">
+                <h2 className="text-3xl font-black font-orbitron italic text-white tracking-tighter uppercase">Trial Active</h2>
+                <p className="text-slate-400 text-xs leading-relaxed">
+                  Free trial runs are capped at <span className="text-cyan-400 font-bold">3000m</span>.
+                </p>
+                <p className="text-slate-500 text-[10px] leading-relaxed italic">
+                  Mint the Grid Pass NFT to unlock unlimited distance and save high scores on the Base blockchain.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowTrialNotice(false);
+                    onStart(settings);
+                  }}
+                  className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-lg rounded-[1.5rem] transition-all hover-jitter uppercase tracking-widest"
+                >
+                  Launch Free Run
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTrialNotice(false);
+                    setShowMintModal(true);
+                  }}
+                  className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-black text-sm rounded-[1.5rem] transition-all hover-jitter uppercase tracking-widest border border-white/5"
+                >
+                  Mint Grid Pass
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 };

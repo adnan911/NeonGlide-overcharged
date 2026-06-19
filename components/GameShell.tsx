@@ -5,7 +5,7 @@ import Landing from './Landing';
 import GameCanvas from './GameCanvas';
 import { GameState, GameSettings, HighScore, ActivePowerUp, PowerUpType } from '../types';
 import { getSettings, saveSettings, getHighScores, saveHighScore } from '../services/persistence';
-import { Pause, RotateCcw, Home, SkipForward, Zap, Trophy, CloudLightning, Loader2, Shield, Magnet, Timer, Download } from 'lucide-react';
+import { Pause, RotateCcw, Home, SkipForward, Zap, Trophy, CloudLightning, Loader2, Shield, Magnet, Timer, Download, Sparkles } from 'lucide-react';
 import { SKINS, COLORS, PHYSICS } from '../constants';
 import { web3Service } from '../services/web3Service';
 
@@ -58,6 +58,10 @@ const GameShell: React.FC = () => {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const [showTrialLimitModal, setShowTrialLimitModal] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+  const [mintError, setMintError] = useState<string | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const handleDownloadCard = async () => {
     if (!cardRef.current) return;
@@ -130,6 +134,7 @@ const GameShell: React.FC = () => {
     setCurrentRunCores(0);
     setActivePowerUps([]);
     setOnchainStatus(null);
+    setShowTrialLimitModal(false);
     setGameState(GameState.PLAYING);
   };
 
@@ -171,8 +176,15 @@ const GameShell: React.FC = () => {
     setCurrentRunCores(0);
     setActivePowerUps([]);
     setOnchainStatus(null);
+    setShowTrialLimitModal(false);
     setGameState(GameState.PLAYING);
   };
+
+  const handleTrialLimitReached = useCallback(() => {
+    setGameState(GameState.PAUSED);
+    setShowTrialLimitModal(true);
+    setWalletAddress(web3Service.getAddress());
+  }, []);
 
   const handleUpdateSettings = (newSettings: GameSettings) => {
     setSettings(newSettings);
@@ -223,6 +235,7 @@ const GameShell: React.FC = () => {
             onScoreUpdate={setCurrentScore}
             onCoreCollect={setCurrentRunCores}
             onPowerUpsUpdate={setActivePowerUps}
+            onTrialLimitReached={handleTrialLimitReached}
           />
           <PowerUpHUD activePowerUps={activePowerUps} />
         </>
@@ -422,6 +435,95 @@ const GameShell: React.FC = () => {
 
               <button onClick={() => setShowPreviewModal(false)} className="w-full py-3 text-slate-500 hover:text-white text-xs font-bold uppercase tracking-widest">
                 Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTrialLimitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-3xl overflow-y-auto">
+          <div className="bg-slate-900 border border-cyan-500/30 rounded-[3rem] p-8 max-w-md w-full space-y-6 shadow-2xl relative animate-in zoom-in-95 duration-300 my-auto">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent" />
+            <div className="text-center space-y-4 flex flex-col items-center">
+              <h2 className="text-3xl font-black font-orbitron italic text-white tracking-tighter uppercase">Grid Limit Reached</h2>
+              <p className="text-slate-400 text-xs leading-relaxed">
+                You have reached the <span className="text-cyan-400 font-bold">3000m capacity</span> limit of the free trial.
+              </p>
+              <p className="text-slate-500 text-[10px] leading-relaxed">
+                Unlock the fully uncharged experience with an official Grid Pass. Save high scores to the Base blockchain and run without limits.
+              </p>
+            </div>
+            
+            <div className="aspect-[16/9] rounded-[1.5rem] bg-slate-950 border border-white/5 flex items-center justify-center relative overflow-hidden p-4">
+              <img src={nftPreview} alt="Grid Pass" className="h-full object-contain" />
+              <div className="absolute bottom-2 right-4 text-[8px] font-mono text-cyan-400/50 uppercase tracking-widest">Base Mainnet</div>
+            </div>
+
+            {mintError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-[10px] font-bold text-center">{mintError}</div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button
+                disabled={isMinting}
+                onClick={async () => {
+                  if (!walletAddress) {
+                    setIsMinting(true);
+                    const addr = await web3Service.connect();
+                    if (addr) {
+                      setWalletAddress(addr);
+                      const hasPass = await web3Service.checkOwnership(addr);
+                      if (hasPass) {
+                        const updated = { ...settings, hasGamePass: true };
+                        setSettings(updated);
+                        saveSettings(updated);
+                        setShowTrialLimitModal(false);
+                        setGameState(GameState.PLAYING);
+                      }
+                    }
+                    setIsMinting(false);
+                    return;
+                  }
+                  setIsMinting(true);
+                  setMintError(null);
+                  try {
+                    const success = await web3Service.mint();
+                    if (success) {
+                      const updated = { ...settings, hasGamePass: true };
+                      setSettings(updated);
+                      saveSettings(updated);
+                      setShowTrialLimitModal(false);
+                      setGameState(GameState.PLAYING);
+                    } else {
+                      throw new Error("Minting transaction failed or was rejected.");
+                    }
+                  } catch (e: any) {
+                    setMintError(e.message || "Failed to mint pass. Try again.");
+                  } finally {
+                    setIsMinting(false);
+                  }
+                }}
+                className="group relative w-full overflow-hidden rounded-[2rem] p-[2px] transition-all duration-300 active:scale-95 disabled:opacity-50"
+              >
+                <div className="absolute inset-0 bg-cyan-500 animate-spark-1 opacity-80" />
+                <div className="relative flex w-full items-center justify-center gap-3 bg-slate-900 hover:bg-slate-800 py-5 rounded-[1.9rem] text-white font-black text-xl">
+                  {isMinting && <Loader2 className="animate-spin" size={20} />}
+                  <span className="tracking-widest uppercase">
+                    {isMinting ? "Processing..." : (walletAddress ? "Mint Grid Pass" : "Connect Wallet & Mint")}
+                  </span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowTrialLimitModal(false);
+                  setGameState(GameState.LANDING);
+                }}
+                className="w-full py-4 bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white font-black text-xs rounded-[1.5rem] transition-all active:scale-95 flex items-center justify-center gap-2 border border-white/5"
+              >
+                <Home size={16} />
+                TERMINATE RUN
               </button>
             </div>
           </div>
